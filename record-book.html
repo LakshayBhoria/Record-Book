@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Record Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Firebase (optional): only used once you paste your own project config into
+     Settings -> Backup & Sync -> Cloud Setup. Loading these scripts does nothing
+     and makes no network calls of consequence until you connect a project. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --paper:#F3ECDA;
+    --paper-deep:#EAE0C2;
+    --rule:#CBB98D;
+    --rule-soft:#DED1AC;
+    --ink:#211D18;
+    --ink-soft:#5B5449;
+    --ink-faint:#8B8271;
+    --red:#A13A32;
+    --red-soft:#C65B4E;
+    --red-wash:#F1DCD8;
+    --green:#3A5F41;
+    --green-soft:#4F7A57;
+    --green-wash:#DEE7DC;
+    --brass:#9C7A3C;
+    --brass-soft:#C9A768;
+    --cloth:#5C1414;
+    --cloth-dark:#3A0D0D;
+    --cloth-light:#7A2020;
+    --card:#FBF7EA;
+    --card-shadow: 0 1px 2px rgba(33,29,24,0.06), 0 4px 14px rgba(33,29,24,0.07);
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'IBM Plex Sans', sans-serif;
+    background:var(--cloth-dark);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .display{font-family:'Fraunces', serif;}
+  ::selection{background:var(--brass-soft); color:var(--ink);}
+
+  /* ---------- layout ---------- */
+  .app{display:flex; min-height:100vh; align-items:stretch;}
+
+  .spine{
+    width:224px; flex-shrink:0;
+    background:
+      radial-gradient(circle at 10px 0, transparent 6px, var(--cloth) 6.5px) 0 0/100% 34px repeat-y,
+      linear-gradient(135deg, var(--cloth-light), var(--cloth) 45%, var(--cloth-dark));
+    position:relative;
+    padding:26px 0 26px 22px;
+    display:flex; flex-direction:column;
+  }
+  .spine::after{
+    content:"";
+    position:absolute; top:0; right:0; bottom:0; width:6px;
+    background:linear-gradient(90deg, rgba(0,0,0,0.35), transparent);
+  }
+  .brand{
+    padding:2px 18px 22px 4px;
+    border-bottom:1px solid rgba(243,236,218,0.18);
+    margin-bottom:14px;
+  }
+  .brand-mark{
+    font-family:'Fraunces', serif; font-weight:600; font-style:italic;
+    font-size:26px; color:var(--paper); line-height:1.1; letter-spacing:0.2px;
+  }
+  .brand-sub{
+    color:rgba(243,236,218,0.6); font-size:10.5px; letter-spacing:1.6px;
+    text-transform:uppercase; margin-top:5px;
+  }
+  .nav{display:flex; flex-direction:column; gap:2px; padding-right:0;}
+  .nav-item{
+    display:flex; align-items:center; gap:11px;
+    padding:10px 16px 10px 14px;
+    color:rgba(243,236,218,0.72);
+    font-size:13.5px; font-weight:500;
+    cursor:pointer; user-select:none;
+    border-radius:5px 0 0 5px;
+    position:relative;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav-item svg{width:16px; height:16px; flex-shrink:0; opacity:0.85;}
+  .nav-item:hover{background:rgba(243,236,218,0.08); color:var(--paper);}
+  .nav-item.active{
+    background:var(--paper); color:var(--ink); font-weight:600;
+  }
+  .nav-item.active svg{opacity:1; color:var(--red);}
+  .nav-item.active::after{
+    content:""; position:absolute; right:-1px; top:0; bottom:0; width:4px; background:var(--brass);
+  }
+  .nav-divider{height:1px; background:rgba(243,236,218,0.14); margin:12px 16px 12px 4px;}
+  .spine-foot{margin-top:auto; padding:14px 18px 0 4px; color:rgba(243,236,218,0.4); font-size:10.5px; line-height:1.5;}
+
+  .page{
+    flex:1; min-width:0;
+    background:
+      repeating-linear-gradient(var(--paper), var(--paper) 35px, var(--rule-soft) 36px);
+    position:relative;
+    overflow-x:hidden;
+  }
+  .page::before{
+    content:"";
+    position:absolute; top:0; bottom:0; left:74px; width:1px;
+    background:var(--red-soft); opacity:0.55;
+  }
+  .page-inner{
+    position:relative; z-index:1;
+    padding:30px 40px 60px 100px;
+    max-width:1180px;
+  }
+
+  .topbar{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:22px; flex-wrap:wrap; gap:10px;
+  }
+  .topbar h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:27px; margin:0;
+    color:var(--ink);
+  }
+  .topbar .biz{
+    font-size:12.5px; color:var(--ink-faint);
+  }
+  .topbar .biz b{color:var(--ink-soft); font-weight:600;}
+  .topbar .today{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--brass);
+    letter-spacing:0.3px;
+  }
+
+  /* ---------- stat cards ---------- */
+  .stat-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:22px;}
+  .stat-card{
+    background:var(--card); border:1px solid var(--rule); border-radius:var(--radius);
+    padding:15px 16px; box-shadow:var(--card-shadow);
+  }
+  .stat-label{font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  .stat-value{font-family:'IBM Plex Mono', monospace; font-size:23px; font-weight:600;}
+  .stat-value.red{color:var(--red);}
+  .stat-value.green{color:var(--green);}
+  .stat-foot{font-size:11px; color:var(--ink-faint); margin-top:4px;}
+
+  /* ---------- generic ---------- */
+  .section-head{display:flex; align-items:center; justify-content:space-between; margin:26px 0 12px 0; gap:10px; flex-wrap:wrap;}
+  .section-head h2{font-family:'Fraunces', serif; font-size:19px; font-weight:600; margin:0; color:var(--ink);}
+  .section-head .count{font-size:11.5px; color:var(--ink-faint); margin-left:8px; font-weight:400;}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px; font-weight:600;
+    padding:8px 15px; border-radius:4px; border:1px solid transparent;
+    cursor:pointer; transition:filter .12s ease, transform .05s ease;
+    white-space:nowrap;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--cloth); color:var(--paper);}
+  .btn-primary:hover{filter:brightness(1.12);}
+  .btn-outline{background:transparent; border-color:var(--brass); color:var(--brass);}
+  .btn-outline:hover{background:rgba(156,122,60,0.1);}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border-color:var(--rule);}
+  .btn-ghost:hover{background:var(--paper-deep);}
+  .btn-danger{background:transparent; color:var(--red); border-color:var(--red-soft);}
+  .btn-danger:hover{background:var(--red-wash);}
+  .btn-sm{padding:5px 10px; font-size:11.5px;}
+  .btn svg{width:14px; height:14px;}
+
+  .searchbar{
+    display:flex; align-items:center; gap:8px; background:var(--card);
+    border:1px solid var(--rule); border-radius:4px; padding:7px 11px; max-width:280px;
+    margin-bottom:12px;
+  }
+  .searchbar svg{width:14px; height:14px; color:var(--ink-faint); flex-shrink:0;}
+  .searchbar input{border:none; background:transparent; outline:none; font-size:13px; width:100%; color:var(--ink); font-family:'IBM Plex Sans';}
+
+  .card{background:var(--card); border:1px solid var(--rule); border-radius:var(--radius); box-shadow:var(--card-shadow); overflow:hidden;}
+  .card-pad{padding:18px 20px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  thead th{
+    text-align:left; font-size:10.5px; letter-spacing:0.8px; text-transform:uppercase;
+    color:var(--ink-faint); font-weight:600; padding:10px 14px; border-bottom:1.5px solid var(--rule);
+    background:var(--paper-deep);
+  }
+  tbody td{padding:10px 14px; border-bottom:1px solid var(--rule-soft); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:rgba(156,122,60,0.07);}
+  td.num, th.num{text-align:right; font-family:'IBM Plex Mono', monospace;}
+  td.amt-red{color:var(--red); font-family:'IBM Plex Mono', monospace; font-weight:600;}
+  td.amt-green{color:var(--green); font-family:'IBM Plex Mono', monospace; font-weight:600;}
+  .row-actions{display:flex; gap:6px; justify-content:flex-end;}
+  .icon-btn{
+    background:none; border:none; cursor:pointer; color:var(--ink-faint); padding:4px; border-radius:3px; display:inline-flex;
+  }
+  .icon-btn:hover{color:var(--red); background:var(--red-wash);}
+  .icon-btn svg{width:14px; height:14px;}
+
+  .chip{display:inline-block; font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:20px; letter-spacing:0.3px;}
+  .chip-green{background:var(--green-wash); color:var(--green);}
+  .chip-red{background:var(--red-wash); color:var(--red);}
+  .chip-brass{background:rgba(156,122,60,0.16); color:var(--brass);}
+  .chip-grey{background:var(--paper-deep); color:var(--ink-soft);}
+
+  .empty{
+    text-align:center; padding:46px 20px; color:var(--ink-faint);
+  }
+  .empty svg{width:34px; height:34px; margin-bottom:10px; opacity:0.5;}
+  .empty p{font-size:13px; margin:2px 0;}
+  .empty .lead{font-family:'Fraunces', serif; font-style:italic; font-size:16px; color:var(--ink-soft); margin-bottom:4px;}
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,15,10,0.55); backdrop-filter:blur(1px);
+    display:flex; align-items:flex-start; justify-content:center; padding:5vh 16px;
+    z-index:100; overflow-y:auto;
+  }
+  .modal{
+    background:var(--paper); border:1px solid var(--rule); border-radius:6px;
+    width:100%; max-width:640px; box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    animation:pop .14s ease;
+  }
+  @keyframes pop{from{opacity:0; transform:translateY(6px) scale(0.99);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .modal.wide{max-width:820px;}
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px; border-bottom:1px solid var(--rule);
+  }
+  .modal-head h3{font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin:0;}
+  .modal-body{padding:20px 22px; max-height:70vh; overflow-y:auto;}
+  .modal-foot{padding:14px 22px; border-top:1px solid var(--rule); display:flex; justify-content:flex-end; gap:10px;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-faint); margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:8px 10px; border:1px solid var(--rule); border-radius:4px;
+    background:var(--card); font-family:'IBM Plex Sans'; font-size:13.5px; color:var(--ink); outline:none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--brass);}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .field-row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+  .hint{font-size:11px; color:var(--ink-faint); margin-top:4px;}
+
+  .line-table{width:100%; border-collapse:collapse; margin-bottom:10px;}
+  .line-table th{font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-faint); text-align:left; padding:0 6px 6px;}
+  .line-table td{padding:4px 6px; vertical-align:middle;}
+  .line-table input, .line-table select{padding:6px 7px; font-size:12.5px; border:1px solid var(--rule); border-radius:3px; background:var(--card); width:100%;}
+  .line-amt{font-family:'IBM Plex Mono', monospace; font-size:12.5px; text-align:right; white-space:nowrap; padding-right:8px;}
+
+  .totals-box{margin-top:8px; padding-top:10px; border-top:1px dashed var(--rule);}
+  .totals-row{display:flex; justify-content:space-between; padding:3px 0; font-size:13px; color:var(--ink-soft);}
+  .totals-row.grand{font-size:17px; font-weight:700; color:var(--ink); border-top:1px solid var(--rule); margin-top:6px; padding-top:8px;}
+  .totals-row .val{font-family:'IBM Plex Mono', monospace;}
+
+  .tabs-sub{display:flex; gap:4px; margin-bottom:16px; flex-wrap:wrap; border-bottom:1px solid var(--rule); padding-bottom:0;}
+  .tab-sub{
+    padding:8px 14px; font-size:12.5px; font-weight:600; color:var(--ink-faint); cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab-sub:hover{color:var(--ink-soft);}
+  .tab-sub.active{color:var(--red); border-bottom-color:var(--red);}
+
+  .toast-wrap{position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px;}
+  .toast{
+    background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:5px; font-size:12.5px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px;
+    animation:slideIn .18s ease;
+  }
+  .toast svg{width:14px; height:14px; color:var(--green-soft); flex-shrink:0;}
+  @keyframes slideIn{from{opacity:0; transform:translateX(14px);} to{opacity:1; transform:translateX(0);}}
+
+  .party-type-toggle{display:flex; gap:8px;}
+  .party-type-toggle label{
+    flex:1; text-align:center; padding:8px; border:1px solid var(--rule); border-radius:4px; cursor:pointer;
+    font-size:12.5px; font-weight:600; color:var(--ink-faint);
+  }
+  .party-type-toggle input{display:none;}
+  .party-type-toggle input:checked + span{color:var(--red);}
+  .party-type-toggle label:has(input:checked){border-color:var(--red-soft); background:var(--red-wash);}
+
+  .balance-banner{
+    display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-radius:5px;
+    margin-bottom:16px; border:1px solid var(--rule);
+  }
+  .balance-banner .l{font-size:12px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.5px;}
+  .balance-banner .v{font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:700;}
+
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--rule); border-radius:6px;}
+
+  @media (max-width:820px){
+    .spine{width:64px; padding-left:0; align-items:center;}
+    .brand{padding:0 0 16px 0; text-align:center;}
+    .brand-sub{display:none;}
+    .brand-mark{font-size:20px;}
+    .nav-item{padding:11px; justify-content:center; border-radius:5px;}
+    .nav-item span.label{display:none;}
+    .nav-item.active::after{display:none;}
+    .spine-foot{display:none;}
+    .page::before{left:22px;}
+    .page-inner{padding:22px 16px 50px 40px;}
+    .field-row, .field-row3{grid-template-columns:1fr;}
+  }
+  /* ---------- auth screen ---------- */
+  .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; background:
+    radial-gradient(circle at 10px 0, transparent 6px, var(--cloth) 6.5px) 0 0/100% 34px repeat-y,
+    linear-gradient(135deg, var(--cloth-light), var(--cloth) 45%, var(--cloth-dark)); padding:24px;}
+  .auth-card{width:100%; max-width:380px; background:var(--card); border-radius:6px; box-shadow:0 12px 40px rgba(0,0,0,0.35); padding:28px 26px 22px;}
+  .auth-brand{font-family:'Fraunces', serif; font-weight:600; font-style:italic; font-size:24px; color:var(--ink); display:flex; align-items:center; gap:8px;}
+  .auth-brand svg{color:var(--red);}
+  .auth-sub{font-size:12px; color:var(--ink-faint); margin:4px 0 18px;}
+  .auth-tabs{display:flex; border-bottom:1px solid var(--rule); margin-bottom:16px;}
+  .auth-tab{flex:1; text-align:center; padding:9px 0; font-size:13px; font-weight:600; color:var(--ink-faint); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .auth-tab.active{color:var(--red); border-bottom-color:var(--red);}
+  .auth-err{background:var(--red-wash); color:var(--red); font-size:12.5px; padding:8px 10px; border-radius:4px; margin:4px 0 2px;}
+  .auth-foot{font-size:11px; color:var(--ink-faint); text-align:center; margin-top:16px; line-height:1.5;}
+  /* ---------- printable invoice ---------- */
+  #printArea{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{display:block; position:absolute; top:0; left:0; width:100%; padding:20px; background:#fff;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toastWrap" class="toast-wrap"></div>
+
+<script>
+/* ============================= ICONS ============================= */
+const ICONS = {
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6"/><rect x="6" y="13" width="12" height="8" rx="1"/><path d="M6 17H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-2"/></svg>',
+  dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  sales:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 12h6M9 16h6M9 8h3"/></svg>',
+  purchases:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18l-1.5 12.5a1 1 0 0 1-1 .9H5.5a1 1 0 0 1-1-.9L3 7z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>',
+  parties:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.7 14.2c2.8.4 5.3 2.4 5.3 5.8"/></svg>',
+  items:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+  payments:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 15.2c.5.9 1.5 1.3 2.6 1.3 1.7 0 2.9-.9 2.9-2.1 0-1.3-1.1-1.8-2.9-2.2-1.8-.4-2.9-.9-2.9-2.2 0-1.2 1.2-2.1 2.9-2.1 1.1 0 2.1.4 2.6 1.3"/><path d="M12 6.5v11"/></svg>',
+  expenses:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-5a2 2 0 0 0 0 4h5"/></svg>',
+  reports:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01M10.3 3.9 2.4 18a1.4 1.4 0 0 0 1.2 2.1h16.8a1.4 1.4 0 0 0 1.2-2.1L13.7 3.9a1.6 1.6 0 0 0-2.8 0z"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  chevron:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>',
+};
+
+/* ============================= HELPERS ============================= */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n){ n = Number(n)||0; const s = n<0?'-':''; return s + '₹' + Math.abs(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtInt(n){ n=Number(n)||0; return n.toLocaleString('en-IN'); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+function uid(prefix){
+  App.state.seq[prefix] = (App.state.seq[prefix]||0) + 1;
+  return prefix + '-' + String(App.state.seq[prefix]).padStart(4,'0');
+}
+function nowTs(){ return Date.now(); }
+
+/* ============================= STORAGE / CLOUD SYNC =============================
+   Three possible backends, auto-selected in this order:
+   1. 'firebase' — a real cloud backend (Firebase Auth + Firestore) once you paste
+      your own free Firebase project config into Settings -> Backup & Sync. This
+      is the one that gives genuine production-grade login security and true
+      cross-device sync independent of Claude, plus automatic daily backups.
+   2. 'claude'   — the built-in window.storage bridge, only present when this
+      page runs inside a Claude artifact. Good for trying things out, syncs
+      across devices as long as you're opening it inside Claude.
+   3. 'local'    — plain browser localStorage. Works anywhere, but each device
+      keeps its own separate copy.
+*/
+const CloudConfig = {
+  KEY:'rb_firebase_config',
+  get(){ try{ const v = localStorage.getItem(this.KEY); return v? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(cfg){ localStorage.setItem(this.KEY, JSON.stringify(cfg)); },
+  clear(){ localStorage.removeItem(this.KEY); }
+};
+
+const Store = {
+  mode:'local', // 'firebase' | 'claude' | 'local'
+  db:null, fbAuth:null, firebaseError:'',
+
+  async init(){
+    const cfg = CloudConfig.get();
+    if(cfg && typeof firebase!=='undefined'){
+      try{
+        const app = (firebase.apps && firebase.apps.length) ? firebase.app() : firebase.initializeApp(cfg);
+        this.fbAuth = firebase.auth();
+        this.db = firebase.firestore();
+        this.mode = 'firebase';
+        return;
+      }catch(e){ this.firebaseError = e.message || 'Could not connect to Firebase.'; }
+    }
+    this.mode = (typeof window!=='undefined' && !!window.storage) ? 'claude' : 'local';
+  },
+
+  get cloudAvailable(){ return this.mode==='firebase' || this.mode==='claude'; },
+
+  // shared/personal are only used by the 'claude' and 'local' auth backends
+  async getShared(key){
+    if(this.mode==='claude'){
+      try{ const r = await window.storage.get(key, true); return r? JSON.parse(r.value) : null; }
+      catch(e){ return null; }
+    }
+    const v = localStorage.getItem('rb_shared_'+key); return v? JSON.parse(v) : null;
+  },
+  async setShared(key, val){
+    if(this.mode==='claude'){
+      try{ await window.storage.set(key, JSON.stringify(val), true); return true; }
+      catch(e){ return false; }
+    }
+    localStorage.setItem('rb_shared_'+key, JSON.stringify(val)); return true;
+  },
+  async getPersonal(key){
+    if(this.mode==='claude'){
+      try{ const r = await window.storage.get(key, false); return r? JSON.parse(r.value) : null; }
+      catch(e){ return null; }
+    }
+    const v = localStorage.getItem('rb_local_'+key); return v? JSON.parse(v) : null;
+  },
+  async setPersonal(key, val){
+    if(this.mode==='claude'){
+      try{ await window.storage.set(key, JSON.stringify(val), false); return true; }
+      catch(e){ return false; }
+    }
+    localStorage.setItem('rb_local_'+key, JSON.stringify(val)); return true;
+  }
+};
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ============================= AUTH ============================= */
+const Auth = {
+  session: null, // {username} for local/claude modes, or {uid,email} for firebase
+  err: '',
+  mode: 'login', // 'login' | 'signup'
+  busy: false,
+
+  async boot(){
+    if(Store.mode==='firebase'){
+      return new Promise(resolve=>{
+        Store.fbAuth.onAuthStateChanged(user=>{
+          if(user){ this.session = {uid:user.uid, email:user.email}; resolve(true); }
+          else resolve(false);
+        });
+      });
+    }
+    const sess = await Store.getPersonal('rb-session');
+    if(sess && sess.username){
+      const users = (await Store.getShared('rb-users')) || {};
+      if(users[sess.username]){ this.session = sess; return true; }
+    }
+    return false;
+  },
+
+  render(){
+    const isLogin = this.mode==='login';
+    const fb = Store.mode==='firebase';
+    document.getElementById('root').innerHTML = `
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="auth-brand">${ICONS.book} Record Book</div>
+          <div class="auth-sub">${fb? 'Cloud-synced billing &amp; accounting (Firebase)' : Store.cloudAvailable? 'Cloud-synced billing &amp; accounting' : 'Local billing &amp; accounting — connect Firebase in Settings for cloud sync'}</div>
+          <div class="auth-tabs">
+            <div class="auth-tab ${isLogin?'active':''}" onclick="Auth.mode='login'; Auth.err=''; Auth.render();">Log In</div>
+            <div class="auth-tab ${!isLogin?'active':''}" onclick="Auth.mode='signup'; Auth.err=''; Auth.render();">Create Account</div>
+          </div>
+          <div class="auth-body">
+            ${!isLogin? `<div class="field"><label>Business name</label><input id="a_biz" placeholder="e.g. Kaveri Stationery"></div>` : ''}
+            <div class="field"><label>${fb?'Email':'Username'}</label><input id="a_user" type="${fb?'email':'text'}" autocomplete="username" placeholder="${fb?'you@business.com':'e.g. kaveri_store'}"></div>
+            <div class="field"><label>Password</label><input id="a_pass" type="password" autocomplete="${isLogin?'current-password':'new-password'}" placeholder="••••••••"></div>
+            ${!isLogin? `<div class="field"><label>Confirm password</label><input id="a_pass2" type="password" placeholder="••••••••"></div>` : ''}
+            ${this.err? `<div class="auth-err">${esc(this.err)}</div>` : ''}
+            <button class="btn btn-primary" style="width:100%; justify-content:center; margin-top:6px;" ${this.busy?'disabled':''} onclick="Auth.${isLogin?'login':'signup'}()">${this.busy? 'Please wait…' : (isLogin? 'Log In':'Create Account')}</button>
+          </div>
+          <div class="auth-foot">${fb? 'Secured by Firebase Authentication — your ledger backs up automatically every day.' : Store.cloudAvailable? 'Your login and ledger sync automatically wherever you open Record Book.' : 'Data is saved to this browser only until you connect Firebase (Settings → Backup & Sync).'}</div>
+        </div>
+      </div>
+    `;
+  },
+
+  async signup(){
+    if(Store.mode==='firebase') return this.signupFirebase();
+    const biz = document.getElementById('a_biz').value.trim();
+    const user = document.getElementById('a_user').value.trim().toLowerCase();
+    const pass = document.getElementById('a_pass').value;
+    const pass2 = document.getElementById('a_pass2').value;
+    if(!biz){ this.err='Business name is required.'; this.render(); return; }
+    if(!/^[a-z0-9_.]{3,24}$/.test(user)){ this.err='Username must be 3-24 characters: letters, numbers, _ or .'; this.render(); return; }
+    if(pass.length<6){ this.err='Password must be at least 6 characters.'; this.render(); return; }
+    if(pass!==pass2){ this.err='Passwords do not match.'; this.render(); return; }
+    this.busy=true; this.err=''; this.render();
+    const users = (await Store.getShared('rb-users')) || {};
+    if(users[user]){ this.busy=false; this.err='That username is already taken.'; this.render(); return; }
+    const passHash = await sha256(pass);
+    users[user] = { passHash, businessName: biz, createdAt: Date.now() };
+    await Store.setShared('rb-users', users);
+    const biz0 = App.defaultState();
+    biz0.business.name = biz;
+    await Store.setShared('rb-biz-'+user, biz0);
+    await Store.setPersonal('rb-session', {username:user});
+    this.session = {username:user};
+    App.boot();
+  },
+
+  async login(){
+    if(Store.mode==='firebase') return this.loginFirebase();
+    const user = document.getElementById('a_user').value.trim().toLowerCase();
+    const pass = document.getElementById('a_pass').value;
+    if(!user||!pass){ this.err='Enter your username and password.'; this.render(); return; }
+    this.busy=true; this.err=''; this.render();
+    const users = (await Store.getShared('rb-users')) || {};
+    const rec = users[user];
+    if(!rec){ this.busy=false; this.err='No account found with that username.'; this.render(); return; }
+    const hash = await sha256(pass);
+    if(hash!==rec.passHash){ this.busy=false; this.err='Incorrect password.'; this.render(); return; }
+    await Store.setPersonal('rb-session', {username:user});
+    this.session = {username:user};
+    App.boot();
+  },
+
+  async signupFirebase(){
+    const biz = document.getElementById('a_biz').value.trim();
+    const email = document.getElementById('a_user').value.trim();
+    const pass = document.getElementById('a_pass').value;
+    const pass2 = document.getElementById('a_pass2').value;
+    if(!biz){ this.err='Business name is required.'; this.render(); return; }
+    if(pass.length<6){ this.err='Password must be at least 6 characters.'; this.render(); return; }
+    if(pass!==pass2){ this.err='Passwords do not match.'; this.render(); return; }
+    this.busy=true; this.err=''; this.render();
+    try{
+      const cred = await Store.fbAuth.createUserWithEmailAndPassword(email, pass);
+      const uid = cred.user.uid;
+      const state = App.defaultState();
+      state.business.name = biz;
+      await Store.db.collection('businesses').doc(uid).set(state);
+      this.session = {uid, email};
+      App.boot();
+    }catch(e){ this.busy=false; this.err = e.message || 'Could not create account.'; this.render(); }
+  },
+
+  async loginFirebase(){
+    const email = document.getElementById('a_user').value.trim();
+    const pass = document.getElementById('a_pass').value;
+    if(!email||!pass){ this.err='Enter your email and password.'; this.render(); return; }
+    this.busy=true; this.err=''; this.render();
+    try{
+      const cred = await Store.fbAuth.signInWithEmailAndPassword(email, pass);
+      this.session = {uid:cred.user.uid, email:cred.user.email};
+      App.boot();
+    }catch(e){ this.busy=false; this.err = e.message || 'Could not log in.'; this.render(); }
+  },
+
+  async logout(){
+    if(!confirm('Log out of Record Book?')) return;
+    if(Store.mode==='firebase'){ try{ await Store.fbAuth.signOut(); }catch(e){} this.session=null; App.state=null; this.mode='login'; this.err=''; this.render(); return; }
+    await Store.setPersonal('rb-session', null);
+    this.session = null;
+    App.state = null;
+    this.mode='login'; this.err='';
+    this.render();
+  },
+
+  async changePassword(oldPass, newPass){
+    if(newPass.length<6) return {ok:false, msg:'New password must be at least 6 characters.'};
+    if(Store.mode==='firebase'){
+      try{
+        const user = Store.fbAuth.currentUser;
+        const cred = firebase.auth.EmailAuthProvider.credential(user.email, oldPass);
+        await user.reauthenticateWithCredential(cred);
+        await user.updatePassword(newPass);
+        return {ok:true};
+      }catch(e){ return {ok:false, msg: e.message || 'Current password is incorrect.'}; }
+    }
+    const users = (await Store.getShared('rb-users')) || {};
+    const rec = users[this.session.username];
+    const oldHash = await sha256(oldPass);
+    if(oldHash!==rec.passHash) return {ok:false, msg:'Current password is incorrect.'};
+    rec.passHash = await sha256(newPass);
+    await Store.setShared('rb-users', users);
+    return {ok:true};
+  }
+};
+
+/* ============================= APP ============================= */
+const App = {
+  state: null,
+  draft: null,
+  editingId: null,
+  saveTimer: null,
+
+  defaultState(){
+    return {
+      seq:{INV:0, PUR:0, PAY:0, EXP:0, P:0, IT:0},
+      business:{ name:'My Shop', gstin:'', phone:'', address:'' },
+      invoiceSettings:{ prefix:'INV-', defaultGst:18, terms:'Thank you for your business!', bank:{accName:'', accNumber:'', ifsc:'', upi:''} },
+      activeTab:'dashboard',
+      reportTab:'pl',
+      settingsTab:'profile',
+      items:[], parties:[], invoices:[], purchases:[], payments:[], expenses:[]
+    };
+  },
+
+  seedData(){
+    const s = this.defaultState();
+    const mk = (arr,p,o)=>{ s.seq[p]=(s.seq[p]||0)+1; const id=p+'-'+String(s.seq[p]).padStart(4,'0'); arr.push(Object.assign({id},o)); return id; };
+    s.business = {name:'Kaveri Stationery & General Store', gstin:'29ABCDE1234F1Z5', phone:'98450 11223', address:'12, Market Road, Jayanagar'};
+
+    const pNotebook = mk(s.items,'IT',{name:'Notebook 200pg', unit:'Pcs', salePrice:45, purchasePrice:32, tax:12, stock:140, lowStock:20});
+    const pPen = mk(s.items,'IT',{name:'Ball Pen (Box of 10)', unit:'Box', salePrice:60, purchasePrice:42, tax:12, stock:65, lowStock:10});
+    const pA4 = mk(s.items,'IT',{name:'A4 Paper Ream', unit:'Pcs', salePrice:320, purchasePrice:270, tax:12, stock:18, lowStock:15});
+    const pFile = mk(s.items,'IT',{name:'File Folder', unit:'Pcs', salePrice:25, purchasePrice:16, tax:5, stock:200, lowStock:30});
+    const pMarker = mk(s.items,'IT',{name:'Whiteboard Marker Set', unit:'Set', salePrice:150, purchasePrice:105, tax:18, stock:8, lowStock:10});
+
+    const cKavya = mk(s.parties,'P',{name:'Kavya Textiles', type:'customer', phone:'90080 11122', gstin:'29KVYA5566G1Z2', opening:1200});
+    const cRohan = mk(s.parties,'P',{name:'Rohan Enterprises', type:'customer', phone:'99001 44556', gstin:'', opening:0});
+    const cSunrise = mk(s.parties,'P',{name:'Sunrise Public School', type:'customer', phone:'80800 99887', gstin:'', opening:0});
+    const sOm = mk(s.parties,'P',{name:'Om Traders (Supplier)', type:'supplier', phone:'70707 12121', gstin:'29OMTR9988H1Z7', opening:800});
+    const sGanesh = mk(s.parties,'P',{name:'Ganesh Paper Mills', type:'supplier', phone:'88990 33445', gstin:'29GNSH1122K1Z1', opening:0});
+
+    function addInvoice(partyId, date, lines, discount, receivedNow, mode){
+      const items = lines.map(l=>({itemId:l.id, name: s.items.find(i=>i.id===l.id).name, qty:l.qty, rate:l.rate, tax:l.tax}));
+      const subtotal = items.reduce((a,l)=>a+l.qty*l.rate,0);
+      const taxTotal = items.reduce((a,l)=>a+ (l.qty*l.rate*l.tax/100),0);
+      const total = Math.max(0, subtotal+taxTotal-(discount||0));
+      const id = mk(s.invoices,'INV',{date, partyId, lines:items, subtotal, taxTotal, discount:discount||0, total, createdAt: new Date(date).getTime()});
+      items.forEach(l=>{ const it = s.items.find(i=>i.id===l.itemId); it.stock -= l.qty; });
+      if(receivedNow>0){ mk(s.payments,'PAY',{date, partyId, type:'in', amount:receivedNow, mode:mode||'Cash', note:'', refType:'invoice', refId:id, createdAt:new Date(date).getTime()+1}); }
+      return id;
+    }
+    function addPurchase(partyId, date, lines, discount, paidNow, mode){
+      const items = lines.map(l=>({itemId:l.id, name: s.items.find(i=>i.id===l.id).name, qty:l.qty, rate:l.rate, tax:l.tax}));
+      const subtotal = items.reduce((a,l)=>a+l.qty*l.rate,0);
+      const taxTotal = items.reduce((a,l)=>a+ (l.qty*l.rate*l.tax/100),0);
+      const total = Math.max(0, subtotal+taxTotal-(discount||0));
+      const id = mk(s.purchases,'PUR',{date, partyId, lines:items, subtotal, taxTotal, discount:discount||0, total, createdAt:new Date(date).getTime()});
+      items.forEach(l=>{ const it = s.items.find(i=>i.id===l.itemId); it.stock += l.qty; });
+      if(paidNow>0){ mk(s.payments,'PAY',{date, partyId, type:'out', amount:paidNow, mode:mode||'Cash', note:'', refType:'purchase', refId:id, createdAt:new Date(date).getTime()+1}); }
+      return id;
+    }
+
+    const d1 = todayStr();
+    const day = 86400000;
+    const d2 = new Date(Date.now()-2*day).toISOString().slice(0,10);
+    const d3 = new Date(Date.now()-5*day).toISOString().slice(0,10);
+    const d4 = new Date(Date.now()-9*day).toISOString().slice(0,10);
+
+    addPurchase(sOm, d4, [{id:pNotebook, qty:100, rate:32, tax:12},{id:pPen, qty:40, rate:42, tax:12}], 0, 3000, 'Bank Transfer');
+    addPurchase(sGanesh, d3, [{id:pA4, qty:30, rate:270, tax:12}], 200, 8000, 'UPI');
+    addInvoice(cKavya, d3, [{id:pNotebook, qty:20, rate:45, tax:12},{id:pFile, qty:15, rate:25, tax:5}], 0, 900, 'UPI');
+    addInvoice(cSunrise, d2, [{id:pNotebook, qty:40, rate:45, tax:12},{id:pMarker, qty:4, rate:150, tax:18}], 100, 0, 'Cash');
+    addInvoice(cRohan, d1, [{id:pPen, qty:6, rate:60, tax:12},{id:pA4, qty:5, rate:320, tax:12}], 0, 500, 'Cash');
+    mk(s.expenses,'EXP',{date:d2, category:'Rent', amount:12000, note:'Shop rent', createdAt:new Date(d2).getTime()});
+    mk(s.expenses,'EXP',{date:d1, category:'Electricity', amount:1450, note:'', createdAt:new Date(d1).getTime()});
+
+    return s;
+  },
+
+  async init(){
+    document.getElementById('root').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#F3ECDA;font-family:IBM Plex Sans,sans-serif;">Opening Record Book…</div>';
+    await Store.init();
+    const loggedIn = await Auth.boot();
+    if(loggedIn){ await this.boot(); } else { Auth.render(); }
+  },
+
+  async boot(){
+    let loaded = null;
+    if(Store.mode==='firebase'){
+      try{
+        const snap = await Store.db.collection('businesses').doc(Auth.session.uid).get();
+        loaded = snap.exists? snap.data() : null;
+      }catch(e){ loaded = null; }
+    } else {
+      const key = 'rb-biz-'+Auth.session.username;
+      loaded = await Store.getShared(key);
+      if(!loaded){ loaded = this.defaultState(); loaded.business.name = (await Store.getShared('rb-users'))?.[Auth.session.username]?.businessName || 'My Shop'; }
+    }
+    if(!loaded) loaded = this.defaultState();
+    this.state = loaded;
+    if(!this.state.seq) this.state.seq = {INV:0,PUR:0,PAY:0,EXP:0,P:0,IT:0};
+    if(!this.state.invoiceSettings) this.state.invoiceSettings = this.defaultState().invoiceSettings;
+    if(!this.state.settingsTab) this.state.settingsTab = 'profile';
+    this.lastSynced = Date.now();
+    this.render();
+    this.maybeDailyBackup();
+  },
+
+  persist(){
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(async ()=>{
+      if(!Auth.session) return;
+      let ok = false;
+      if(Store.mode==='firebase'){
+        try{ await Store.db.collection('businesses').doc(Auth.session.uid).set(this.state); ok = true; this.maybeDailyBackup(); }
+        catch(e){ ok = false; }
+      } else {
+        ok = await Store.setShared('rb-biz-'+Auth.session.username, this.state);
+      }
+      if(ok){ this.lastSynced = Date.now(); const el=document.getElementById('syncStamp'); if(el) el.textContent = this.syncLabel(); }
+    }, 250);
+  },
+  syncLabel(){
+    if(!this.lastSynced) return 'Not synced yet';
+    const secs = Math.round((Date.now()-this.lastSynced)/1000);
+    const when = secs<5? 'just now' : secs<60? secs+'s ago' : Math.round(secs/60)+'m ago';
+    return (Store.cloudAvailable? 'Cloud-synced · ':'Saved locally · ') + when;
+  },
+
+  /* ---------- automatic daily backup (Firebase mode only) ---------- */
+  async maybeDailyBackup(){
+    if(Store.mode!=='firebase' || !Auth.session) return;
+    const today = todayStr();
+    if(this._backupDoneFor===today) return;
+    this._backupDoneFor = today;
+    try{
+      await Store.db.collection('businesses').doc(Auth.session.uid)
+        .collection('backups').doc(today)
+        .set({ snapshot: this.state, savedAt: Date.now() });
+    }catch(e){ /* best effort — doesn't block the app */ }
+  },
+  async listBackups(){
+    if(Store.mode!=='firebase' || !Auth.session) return [];
+    try{
+      const q = await Store.db.collection('businesses').doc(Auth.session.uid)
+        .collection('backups').orderBy('savedAt','desc').limit(14).get();
+      return q.docs.map(d=>({id:d.id, savedAt:d.data().savedAt}));
+    }catch(e){ return []; }
+  },
+  async restoreBackup(dateId){
+    if(!confirm('Restore the backup from '+dateId+'? This replaces all current data with that day\'s snapshot.')) return;
+    try{
+      const doc = await Store.db.collection('businesses').doc(Auth.session.uid).collection('backups').doc(dateId).get();
+      if(!doc.exists){ this.toast('Backup not found','error'); return; }
+      this.state = doc.data().snapshot;
+      if(!this.state.invoiceSettings) this.state.invoiceSettings = this.defaultState().invoiceSettings;
+      this.persist(); this.render(); this.toast('Restored backup from '+dateId);
+    }catch(e){ this.toast('Could not restore backup','error'); }
+  },
+
+  toast(msg, kind){
+    const wrap = document.getElementById('toastWrap');
+    const div = document.createElement('div');
+    div.className='toast';
+    div.innerHTML = (kind==='error'? ICONS.alert : ICONS.check) + '<span>'+esc(msg)+'</span>';
+    wrap.appendChild(div);
+    setTimeout(()=>{ div.style.opacity='0'; div.style.transition='opacity .25s'; setTimeout(()=>div.remove(),260); }, 2200);
+  },
+
+  setTab(tab){ this.state.activeTab = tab; this.state.search=''; this.render(); this.persist(); },
+  setReportTab(tab){ this.state.reportTab = tab; this.render(); },
+
+  /* ---------- derived ---------- */
+  partyById(id){ return this.state.parties.find(p=>p.id===id); },
+  itemById(id){ return this.state.items.find(i=>i.id===id); },
+
+  partyBalance(party){
+    const s = this.state;
+    if(party.type==='customer'){
+      const inv = s.invoices.filter(i=>i.partyId===party.id).reduce((a,i)=>a+i.total,0);
+      const pay = s.payments.filter(p=>p.partyId===party.id && p.type==='in').reduce((a,p)=>a+p.amount,0);
+      return (party.opening||0) + inv - pay;
+    } else {
+      const pur = s.purchases.filter(i=>i.partyId===party.id).reduce((a,i)=>a+i.total,0);
+      const pay = s.payments.filter(p=>p.partyId===party.id && p.type==='out').reduce((a,p)=>a+p.amount,0);
+      return (party.opening||0) + pur - pay;
+    }
+  },
+
+  /* ---------- CRUD: items ---------- */
+  saveItem(data, id){
+    if(id){ Object.assign(this.itemById(id), data); this.toast('Item updated'); }
+    else{ const nid = uid('IT'); this.state.items.push(Object.assign({id:nid, stock:Number(data.openingStock)||0}, data)); this.toast('Item added'); }
+    this.persist(); this.closeModal(); this.render();
+  },
+  deleteItem(id){
+    if(!confirm('Delete this item? This cannot be undone.')) return;
+    this.state.items = this.state.items.filter(i=>i.id!==id);
+    this.persist(); this.render(); this.toast('Item deleted');
+  },
+
+  /* ---------- CRUD: parties ---------- */
+  saveParty(data, id){
+    if(id){ Object.assign(this.partyById(id), data); this.toast('Party updated'); }
+    else{ const nid = uid('P'); this.state.parties.push(Object.assign({id:nid}, data)); this.toast('Party added'); return nid; }
+    this.persist(); this.closeModal(); this.render();
+  },
+  deleteParty(id){
+    if(!confirm('Delete this party and keep their past transactions on record? The party will be removed from lists.')) return;
+    this.state.parties = this.state.parties.filter(p=>p.id!==id);
+    this.persist(); this.render(); this.toast('Party deleted');
+  },
+
+  /* ---------- CRUD: expenses ---------- */
+  saveExpense(data, id){
+    if(id){ Object.assign(this.state.expenses.find(e=>e.id===id), data); this.toast('Expense updated'); }
+    else{ const nid = uid('EXP'); this.state.expenses.push(Object.assign({id:nid, createdAt:nowTs()}, data)); this.toast('Expense recorded'); }
+    this.persist(); this.closeModal(); this.render();
+  },
+  deleteExpense(id){
+    if(!confirm('Delete this expense entry?')) return;
+    this.state.expenses = this.state.expenses.filter(e=>e.id!==id);
+    this.persist(); this.render(); this.toast('Expense deleted');
+  },
+
+  /* ---------- CRUD: payments ---------- */
+  savePayment(data){
+    const nid = uid('PAY');
+    this.state.payments.push(Object.assign({id:nid, createdAt:nowTs()}, data));
+    this.persist(); this.closeModal(); this.render(); this.toast('Payment recorded');
+  },
+  deletePayment(id){
+    const p = this.state.payments.find(x=>x.id===id);
+    if(p && p.refType){ this.toast('This payment is linked to a '+p.refType+' — delete that entry instead.', 'error'); return; }
+    if(!confirm('Delete this payment record?')) return;
+    this.state.payments = this.state.payments.filter(x=>x.id!==id);
+    this.persist(); this.render(); this.toast('Payment deleted');
+  },
+
+  /* ---------- CRUD: invoices / purchases ---------- */
+  deleteInvoice(id){
+    if(!confirm('Delete this sale? Stock will be restored and any linked payment removed.')) return;
+    const inv = this.state.invoices.find(i=>i.id===id);
+    inv.lines.forEach(l=>{ const it=this.itemById(l.itemId); if(it) it.stock += l.qty; });
+    this.state.payments = this.state.payments.filter(p=>!(p.refType==='invoice' && p.refId===id));
+    this.state.invoices = this.state.invoices.filter(i=>i.id!==id);
+    this.persist(); this.render(); this.toast('Sale deleted');
+  },
+  deletePurchase(id){
+    if(!confirm('Delete this purchase? Stock will be reduced back and any linked payment removed.')) return;
+    const pur = this.state.purchases.find(i=>i.id===id);
+    pur.lines.forEach(l=>{ const it=this.itemById(l.itemId); if(it) it.stock -= l.qty; });
+    this.state.payments = this.state.payments.filter(p=>!(p.refType==='purchase' && p.refId===id));
+    this.state.purchases = this.state.purchases.filter(i=>i.id!==id);
+    this.persist(); this.render(); this.toast('Purchase deleted');
+  },
+
+  /* ---------- draft (new sale / purchase) ---------- */
+  openDraft(kind){
+    this.draft = { kind, partyId:'', date: todayStr(), lines:[{itemId:'', qty:1, rate:0, tax:0}], discount:0, receivedNow:0, mode:'Cash' };
+    this.openModal(this.renderDraftModal(), 'wide');
+  },
+  draftAddLine(){
+    const gst = this.draftPartyGst();
+    this.draft.lines.push({itemId:'', qty:1, rate:0, tax: gst!=null? gst : 0});
+    this.refreshModal();
+  },
+  draftRemoveLine(idx){ this.draft.lines.splice(idx,1); if(!this.draft.lines.length) this.draft.lines.push({itemId:'',qty:1,rate:0,tax:0}); this.refreshModal(); },
+  draftPartyGst(){
+    const p = this.draft.partyId && this.partyById(this.draft.partyId);
+    return (p && p.gstRate!=null && p.gstRate!=='') ? Number(p.gstRate) : null;
+  },
+  draftSetItem(idx, itemId){
+    const it = this.itemById(itemId);
+    const l = this.draft.lines[idx];
+    l.itemId = itemId;
+    const gst = this.draftPartyGst();
+    if(it){ l.rate = this.draft.kind==='sale' ? it.salePrice : it.purchasePrice; l.tax = gst!=null? gst : it.tax; }
+    this.refreshModal();
+  },
+  draftSetField(idx, field, value){ this.draft.lines[idx][field] = Number(value)||0; this.refreshModal(); },
+  draftSetMeta(field, value){
+    this.draft[field] = value;
+    if(field==='partyId'){
+      const gst = this.draftPartyGst();
+      if(gst!=null){ this.draft.lines.forEach(l=> l.tax = gst); this.toast('GST '+gst+'% auto-applied for this party'); }
+    }
+    this.refreshModal();
+  },
+  draftTotals(){
+    const subtotal = this.draft.lines.reduce((a,l)=> a + (Number(l.qty)||0)*(Number(l.rate)||0), 0);
+    const taxTotal = this.draft.lines.reduce((a,l)=> a + (Number(l.qty)||0)*(Number(l.rate)||0)*(Number(l.tax)||0)/100, 0);
+    const total = Math.max(0, subtotal + taxTotal - (Number(this.draft.discount)||0));
+    return {subtotal, taxTotal, total};
+  },
+  saveDraft(){
+    const d = this.draft;
+    if(!d.partyId){ this.toast('Please select a party', 'error'); return; }
+    const validLines = d.lines.filter(l=>l.itemId && l.qty>0);
+    if(!validLines.length){ this.toast('Add at least one item', 'error'); return; }
+    const {subtotal, taxTotal, total} = this.draftTotals();
+    const lines = validLines.map(l=>({itemId:l.itemId, name:this.itemById(l.itemId).name, qty:Number(l.qty), rate:Number(l.rate), tax:Number(l.tax)}));
+    const received = Math.min(Number(d.receivedNow)||0, total) ;
+    if(d.kind==='sale'){
+      const id = uid('INV');
+      this.state.invoices.push({id, date:d.date, partyId:d.partyId, lines, subtotal, taxTotal, discount:Number(d.discount)||0, total, createdAt:nowTs()});
+      lines.forEach(l=>{ const it=this.itemById(l.itemId); it.stock -= l.qty; });
+      if(received>0){ this.state.payments.push({id:uid('PAY'), date:d.date, partyId:d.partyId, type:'in', amount:received, mode:d.mode, note:'', refType:'invoice', refId:id, createdAt:nowTs()+1}); }
+      this.toast('Sale '+id+' recorded');
+    } else {
+      const id = uid('PUR');
+      this.state.purchases.push({id, date:d.date, partyId:d.partyId, lines, subtotal, taxTotal, discount:Number(d.discount)||0, total, createdAt:nowTs()});
+      lines.forEach(l=>{ const it=this.itemById(l.itemId); it.stock += l.qty; });
+      if(received>0){ this.state.payments.push({id:uid('PAY'), date:d.date, partyId:d.partyId, type:'out', amount:received, mode:d.mode, note:'', refType:'purchase', refId:id, createdAt:nowTs()+1}); }
+      this.toast('Purchase '+id+' recorded');
+    }
+    this.persist(); this.closeModal(); this.render();
+  },
+
+  /* ---------- modal plumbing ---------- */
+  openModal(html, size){
+    let ov = document.getElementById('overlay');
+    if(!ov){ ov = document.createElement('div'); ov.id='overlay'; ov.className='overlay'; document.body.appendChild(ov); }
+    ov.innerHTML = '<div class="modal '+(size==='wide'?'wide':'')+'" id="modalBox">'+html+'</div>';
+    ov.onclick = (e)=>{ if(e.target===ov) App.closeModal(); };
+  },
+  refreshModal(){
+    const box = document.getElementById('modalBox');
+    if(box) box.outerHTML = '<div class="modal wide" id="modalBox">'+this.renderDraftModal()+'</div>';
+  },
+  closeModal(){ const ov = document.getElementById('overlay'); if(ov) ov.remove(); this.draft=null; this.editingId=null; },
+
+  /* ============================= RENDER ============================= */
+  render(){
+    const s = this.state;
+    const root = document.getElementById('root');
+    root.innerHTML = `
+      <div class="app">
+        <div class="spine">
+          <div class="brand">
+            <div class="brand-mark">${ICONS.book} Record Book</div>
+            <div class="brand-sub">Khata &amp; Billing</div>
+          </div>
+          <div class="nav">
+            ${this.navItem('dashboard','Dashboard','dashboard')}
+            ${this.navItem('sales','Sales','sales')}
+            ${this.navItem('purchases','Purchases','purchases')}
+            ${this.navItem('parties','Parties','parties')}
+            ${this.navItem('items','Items','items')}
+            ${this.navItem('payments','Payments','payments')}
+            ${this.navItem('expenses','Expenses','expenses')}
+            <div class="nav-divider"></div>
+            ${this.navItem('reports','Reports','reports')}
+            ${this.navItem('settings','Settings','settings')}
+          </div>
+          <div class="spine-foot">
+            <div style="color:rgba(243,236,218,0.75); font-weight:600; font-size:11.5px;">${esc(s.business.name)}</div>
+            <div style="margin:2px 0 8px;">${Store.mode==='firebase'? esc(Auth.session.email) : '@'+esc(Auth.session.username)} · <span id="syncStamp">${this.syncLabel()}</span></div>
+            <a href="#" onclick="event.preventDefault(); Auth.logout();" style="color:rgba(243,236,218,0.55); text-decoration:underline;">Log out</a>
+          </div>
+        </div>
+        <div class="page"><div class="page-inner" id="pageInner"></div></div>
+      </div>
+    `;
+    document.getElementById('pageInner').innerHTML = this.renderPage();
+    if(this.state.activeTab==='settings' && this.state.settingsTab==='backup' && Store.mode==='firebase'){ this.loadBackupList(); }
+  },
+
+  navItem(tab, label, icon){
+    const active = this.state.activeTab===tab;
+    return `<div class="nav-item ${active?'active':''}" onclick="App.setTab('${tab}')">${ICONS[icon]}<span class="label">${label}</span></div>`;
+  },
+
+  renderPage(){
+    switch(this.state.activeTab){
+      case 'dashboard': return this.renderDashboard();
+      case 'sales': return this.renderList('sales');
+      case 'purchases': return this.renderList('purchases');
+      case 'parties': return this.renderParties();
+      case 'items': return this.renderItems();
+      case 'payments': return this.renderPayments();
+      case 'expenses': return this.renderExpenses();
+      case 'reports': return this.renderReports();
+      case 'settings': return this.renderSettings();
+      default: return '';
+    }
+  },
+
+  topbar(title){
+    const b = this.state.business;
+    return `<div class="topbar">
+      <div>
+        <h1>${esc(title)}</h1>
+        <div class="biz"><b>${esc(b.name)}</b>${b.gstin? ' &middot; GSTIN '+esc(b.gstin) : ''}</div>
+      </div>
+      <div class="today mono">${fmtDate(todayStr())}</div>
+    </div>`;
+  },
+
+  /* ---------- dashboard ---------- */
+  renderDashboard(){
+    const s = this.state;
+    const today = todayStr();
+    const todaySales = s.invoices.filter(i=>i.date===today).reduce((a,i)=>a+i.total,0);
+    const receivable = s.parties.filter(p=>p.type==='customer').reduce((a,p)=>a+Math.max(0,this.partyBalance(p)),0);
+    const payable = s.parties.filter(p=>p.type==='supplier').reduce((a,p)=>a+Math.max(0,this.partyBalance(p)),0);
+    const lowStock = s.items.filter(i=>i.stock<=i.lowStock);
+
+    const activity = [];
+    s.invoices.forEach(i=>activity.push({t:'Sale', date:i.date, ts:i.createdAt, label: i.id+' · '+(this.partyById(i.partyId)?.name||'Walk-in'), amt:i.total, color:'green'}));
+    s.purchases.forEach(i=>activity.push({t:'Purchase', date:i.date, ts:i.createdAt, label: i.id+' · '+(this.partyById(i.partyId)?.name||''), amt:i.total, color:'red'}));
+    s.payments.forEach(p=>activity.push({t: p.type==='in'?'Payment In':'Payment Out', date:p.date, ts:p.createdAt, label:(this.partyById(p.partyId)?.name||'')+' · '+p.mode, amt:p.amount, color: p.type==='in'?'green':'red'}));
+    s.expenses.forEach(e=>activity.push({t:'Expense', date:e.date, ts:e.createdAt, label:e.category, amt:e.amount, color:'red'}));
+    activity.sort((a,b)=> b.ts-a.ts);
+    const recent = activity.slice(0,8);
+
+    return `
+      ${this.topbar('Dashboard')}
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">${ICONS.sales.replace('width="24" height="24"','width="12" height="12"')} Today's Sales</div>
+          <div class="stat-value green">${fmt(todaySales)}</div>
+          <div class="stat-foot">${s.invoices.filter(i=>i.date===today).length} invoice(s) today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">To Receive</div>
+          <div class="stat-value red">${fmt(receivable)}</div>
+          <div class="stat-foot">from ${s.parties.filter(p=>p.type==='customer' && this.partyBalance(p)>0).length} customer(s)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">To Pay</div>
+          <div class="stat-value red">${fmt(payable)}</div>
+          <div class="stat-foot">to ${s.parties.filter(p=>p.type==='supplier' && this.partyBalance(p)>0).length} supplier(s)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Low Stock</div>
+          <div class="stat-value ${lowStock.length? 'red':''}">${lowStock.length}</div>
+          <div class="stat-foot">item(s) below reorder level</div>
+        </div>
+      </div>
+
+      ${lowStock.length? `
+      <div class="section-head"><h2>Low stock alerts</h2></div>
+      <div class="card card-pad" style="margin-bottom:8px;">
+        ${lowStock.map(i=>`<span class="chip chip-red" style="margin:3px 6px 3px 0;">${esc(i.name)} — ${i.stock} ${esc(i.unit)} left</span>`).join('')}
+      </div>` : ''}
+
+      <div class="section-head"><h2>Recent activity</h2></div>
+      <div class="card">
+        ${recent.length? `<table><thead><tr><th>Type</th><th>Details</th><th>Date</th><th class="num">Amount</th></tr></thead><tbody>
+          ${recent.map(a=>`<tr><td><span class="chip ${a.color==='green'?'chip-green':'chip-red'}">${a.t}</span></td><td>${esc(a.label)}</td><td class="mono" style="color:var(--ink-faint); font-size:12px;">${fmtDate(a.date)}</td><td class="num ${a.color==='green'?'amt-green':'amt-red'}">${fmt(a.amt)}</td></tr>`).join('')}
+        </tbody></table>` : this.emptyState('No activity yet', 'Record a sale, purchase, or payment to see it here.')}
+      </div>
+    `;
+  },
+
+  emptyState(lead, sub){
+    return `<div class="empty">${ICONS.book}<div class="lead">${esc(lead)}</div><p>${esc(sub)}</p></div>`;
+  },
+
+  /* ---------- sales / purchases list ---------- */
+  renderList(kind){
+    const isSale = kind==='sales';
+    const s = this.state;
+    const data = isSale? s.invoices : s.purchases;
+    const q = (s.search||'').toLowerCase();
+    const rows = data.filter(d=>{
+      if(!q) return true;
+      const p = this.partyById(d.partyId);
+      return d.id.toLowerCase().includes(q) || (p && p.name.toLowerCase().includes(q));
+    }).slice().sort((a,b)=>b.createdAt-a.createdAt);
+
+    return `
+      ${this.topbar(isSale? 'Sales' : 'Purchases')}
+      <div class="section-head">
+        <h2>${isSale?'Invoices':'Purchase bills'}<span class="count">${data.length} total</span></h2>
+        <button class="btn btn-primary" onclick="App.openDraft('${isSale?'sale':'purchase'}')">${ICONS.plus} New ${isSale?'Sale':'Purchase'}</button>
+      </div>
+      <div class="searchbar">${ICONS.search}<input placeholder="Search by ${isSale?'invoice no. or customer':'bill no. or supplier'}" value="${esc(s.search||'')}" oninput="App.state.search=this.value; App.renderListOnly();"></div>
+      <div class="card" id="listCard">${this.listTable(kind, rows)}</div>
+    `;
+  },
+  renderListOnly(){ const el = document.getElementById('listCard'); if(el){ const kind = this.state.activeTab; el.innerHTML = this.listTable(kind, this.filteredForList(kind)); } },
+  filteredForList(kind){
+    const isSale = kind==='sales';
+    const data = isSale? this.state.invoices : this.state.purchases;
+    const q = (this.state.search||'').toLowerCase();
+    return data.filter(d=>{
+      if(!q) return true;
+      const p = this.partyById(d.partyId);
+      return d.id.toLowerCase().includes(q) || (p && p.name.toLowerCase().includes(q));
+    }).slice().sort((a,b)=>b.createdAt-a.createdAt);
+  },
+  listTable(kind, rows){
+    const isSale = kind==='sales';
+    if(!rows.length) return this.emptyState(isSale?'No sales yet':'No purchases yet', isSale? 'Create your first invoice to get started.' : 'Record your first purchase bill to get started.');
+    return `<table><thead><tr>
+        <th>${isSale?'Invoice':'Bill'} No.</th><th>Date</th><th>Party</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th>
+      </tr></thead><tbody>
+      ${rows.map(d=>{
+        const p = this.partyById(d.partyId);
+        const paid = this.state.payments.filter(x=>x.refType===(isSale?'invoice':'purchase') && x.refId===d.id).reduce((a,x)=>a+x.amount,0);
+        const bal = d.total - paid;
+        const status = bal<=0.005? 'Paid' : (paid>0? 'Partial' : 'Unpaid');
+        const chipCls = status==='Paid'?'chip-green':(status==='Partial'?'chip-brass':'chip-red');
+        return `<tr>
+          <td class="mono" style="font-weight:600;">${d.id}</td>
+          <td style="color:var(--ink-faint); font-size:12px;">${fmtDate(d.date)}</td>
+          <td>${esc(p? p.name : '—')}</td>
+          <td class="num">${fmt(d.total)}</td>
+          <td class="num" style="color:var(--ink-faint);">${fmt(paid)}</td>
+          <td class="num ${bal>0.005?'amt-red':'amt-green'}">${fmt(bal)}</td>
+          <td><span class="chip ${chipCls}">${status}</span></td>
+          <td><div class="row-actions">
+            <button class="icon-btn" title="Print" onclick="event.stopPropagation(); App.printDocument('${isSale?'sale':'purchase'}','${d.id}')">${ICONS.print}</button>
+            <button class="icon-btn" title="Delete" onclick="event.stopPropagation(); App.${isSale?'deleteInvoice':'deletePurchase'}('${d.id}')">${ICONS.trash}</button>
+          </div></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`;
+  },
+
+  /* ---------- draft modal (new sale/purchase) ---------- */
+  renderDraftModal(){
+    const d = this.draft;
+    const isSale = d.kind==='sale';
+    const parties = this.state.parties.filter(p=> isSale? p.type==='customer' : p.type==='supplier');
+    const {subtotal, taxTotal, total} = this.draftTotals();
+    return `
+      <div class="modal-head"><h3>New ${isSale?'Sale':'Purchase'}</h3><button class="icon-btn" onclick="App.closeModal()">${ICONS.x}</button></div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field">
+            <label>${isSale?'Customer':'Supplier'}</label>
+            <select onchange="App.draftSetMeta('partyId', this.value)">
+              <option value="">Select ${isSale?'customer':'supplier'}…</option>
+              ${parties.map(p=>`<option value="${p.id}" ${d.partyId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" value="${d.date}" onchange="App.draftSetMeta('date', this.value)">
+          </div>
+        </div>
+
+        <table class="line-table">
+          <thead><tr><th style="width:34%;">Item</th><th style="width:14%;">Qty</th><th style="width:18%;">Rate</th><th style="width:10%;">Tax %</th><th style="width:18%;text-align:right;">Amount</th><th style="width:6%;"></th></tr></thead>
+          <tbody>
+          ${d.lines.map((l,idx)=>{
+            const amt = (Number(l.qty)||0)*(Number(l.rate)||0);
+            return `<tr>
+              <td><select onchange="App.draftSetItem(${idx}, this.value)">
+                <option value="">Select item…</option>
+                ${this.state.items.map(it=>`<option value="${it.id}" ${l.itemId===it.id?'selected':''}>${esc(it.name)}</option>`).join('')}
+              </select></td>
+              <td><input type="number" min="0" step="any" value="${l.qty}" onchange="App.draftSetField(${idx},'qty',this.value)"></td>
+              <td><input type="number" min="0" step="any" value="${l.rate}" onchange="App.draftSetField(${idx},'rate',this.value)"></td>
+              <td><input type="number" min="0" step="any" value="${l.tax}" onchange="App.draftSetField(${idx},'tax',this.value)"></td>
+              <td class="line-amt">${fmt(amt)}</td>
+              <td><button class="icon-btn" onclick="App.draftRemoveLine(${idx})">${ICONS.x}</button></td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+        <button class="btn btn-outline btn-sm" onclick="App.draftAddLine()">${ICONS.plus} Add line</button>
+
+        <div class="totals-box">
+          <div class="totals-row"><span>Subtotal</span><span class="val">${fmt(subtotal)}</span></div>
+          <div class="totals-row"><span>Tax</span><span class="val">${fmt(taxTotal)}</span></div>
+          <div class="totals-row"><span>Discount</span><span class="val"><input type="number" min="0" step="any" style="width:100px; text-align:right;" value="${d.discount}" onchange="App.draftSetMeta('discount', this.value)"></span></div>
+          <div class="totals-row grand"><span>Grand Total</span><span class="val">${fmt(total)}</span></div>
+        </div>
+
+        <div class="field-row" style="margin-top:16px;">
+          <div class="field">
+            <label>${isSale?'Received now':'Paid now'}</label>
+            <input type="number" min="0" step="any" value="${d.receivedNow}" onchange="App.draftSetMeta('receivedNow', this.value)">
+          </div>
+          <div class="field">
+            <label>Payment mode</label>
+            <select onchange="App.draftSetMeta('mode', this.value)">
+              ${['Cash','UPI','Card','Bank Transfer'].map(m=>`<option ${d.mode===m?'selected':''}>${m}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="hint">Leave "${isSale?'Received now':'Paid now'}" as 0 to record this as fully on credit.</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.saveDraft()">${ICONS.check} Save ${isSale?'Sale':'Purchase'}</button>
+      </div>
+    `;
+  },
+
+  /* ---------- parties ---------- */
+  renderParties(){
+    const s = this.state;
+    const q = (s.search||'').toLowerCase();
+    const rows = s.parties.filter(p=> !q || p.name.toLowerCase().includes(q)).slice().sort((a,b)=>a.name.localeCompare(b.name));
+    return `
+      ${this.topbar('Parties')}
+      <div class="section-head">
+        <h2>Customers &amp; Suppliers<span class="count">${s.parties.length} total</span></h2>
+        <button class="btn btn-primary" onclick="App.openPartyModal()">${ICONS.plus} Add Party</button>
+      </div>
+      <div class="searchbar">${ICONS.search}<input placeholder="Search parties" value="${esc(s.search||'')}" oninput="App.state.search=this.value; App.renderPartiesOnly();"></div>
+      <div class="card" id="listCard">${this.partiesTable(rows)}</div>
+    `;
+  },
+  renderPartiesOnly(){ const el=document.getElementById('listCard'); if(el){ const q=(this.state.search||'').toLowerCase(); const rows=this.state.parties.filter(p=>!q||p.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)); el.innerHTML=this.partiesTable(rows); } },
+  partiesTable(rows){
+    if(!rows.length) return this.emptyState('No parties yet', 'Add a customer or supplier to start billing.');
+    return `<table><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th class="num">Balance</th><th></th></tr></thead><tbody>
+      ${rows.map(p=>{
+        const bal = this.partyBalance(p);
+        const owe = p.type==='customer'? (bal>0? 'owes you':'in credit') : (bal>0? 'you owe':'in credit');
+        return `<tr class="clickable" onclick="App.openPartyLedger('${p.id}')">
+          <td style="font-weight:600;">${esc(p.name)}${(p.gstRate!=null&&p.gstRate!=='')? ` <span class="chip chip-brass" style="margin-left:4px;">GST ${p.gstRate}%</span>`:''}</td>
+          <td><span class="chip ${p.type==='customer'?'chip-green':'chip-brass'}">${p.type==='customer'?'Customer':'Supplier'}</span></td>
+          <td style="color:var(--ink-faint); font-size:12.5px;">${esc(p.phone||'—')}</td>
+          <td class="num ${bal>0?'amt-red':'amt-green'}">${fmt(Math.abs(bal))} <span style="color:var(--ink-faint); font-weight:400; font-size:10.5px;">${owe}</span></td>
+          <td><div class="row-actions">
+            <button class="icon-btn" title="Edit" onclick="event.stopPropagation(); App.openPartyModal('${p.id}')">${ICONS.edit}</button>
+            <button class="icon-btn" title="Delete" onclick="event.stopPropagation(); App.deleteParty('${p.id}')">${ICONS.trash}</button>
+          </div></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table>`;
+  },
+  openPartyModal(id){
+    this.editingId = id||null;
+    const p = id? this.partyById(id) : {name:'', type:'customer', phone:'', gstin:'', opening:0};
+    this.openModal(`
+      <div class="modal-head"><h3>${id?'Edit Party':'Add Party'}</h3><button class="icon-btn" onclick="App.closeModal()">${ICONS.x}</button></div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Type</label>
+          <div class="party-type-toggle">
+            <label><input type="radio" name="ptype" value="customer" ${p.type==='customer'?'checked':''}><span>Customer</span></label>
+            <label><input type="radio" name="ptype" value="supplier" ${p.type==='supplier'?'checked':''}><span>Supplier</span></label>
+          </div>
+        </div>
+        <div class="field"><label>Name</label><input id="f_name" value="${esc(p.name)}" placeholder="e.g. Kavya Textiles"></div>
+        <div class="field-row">
+          <div class="field"><label>Phone</label><input id="f_phone" value="${esc(p.phone||'')}" placeholder="10-digit mobile"></div>
+          <div class="field"><label>GSTIN (optional)</label><input id="f_gstin" value="${esc(p.gstin||'')}" placeholder="29ABCDE1234F1Z5"></div>
+        </div>
+        <div class="field"><label>Opening balance (₹, positive = owed)</label><input id="f_opening" type="number" step="any" value="${p.opening||0}"></div>
+        <div class="field">
+          <label>Fixed GST % for this party's bills (optional)</label>
+          <select id="f_gstrate">
+            <option value="" ${(p.gstRate==null||p.gstRate==='')?'selected':''}>No fixed rate — use each item's own GST%</option>
+            ${[0,5,12,18,28].map(r=>`<option value="${r}" ${String(p.gstRate)===String(r)?'selected':''}>${r}% — apply to every bill for this party</option>`).join('')}
+          </select>
+          <div class="hint">When set, every new sale/purchase you create for this party auto-fills this GST% on all line items — you can still edit it on a specific bill if needed.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.submitParty(${id?`'${id}'`:'null'})">${ICONS.check} Save Party</button>
+      </div>
+    `);
+  },
+  submitParty(id){
+    const type = document.querySelector('input[name="ptype"]:checked').value;
+    const name = document.getElementById('f_name').value.trim();
+    if(!name){ this.toast('Party name is required','error'); return; }
+    const gstVal = document.getElementById('f_gstrate').value;
+    const data = { name, type, phone: document.getElementById('f_phone').value.trim(), gstin: document.getElementById('f_gstin').value.trim(), opening: Number(document.getElementById('f_opening').value)||0, gstRate: gstVal===''? null : Number(gstVal) };
+    this.saveParty(data, id);
+  },
+  openPartyLedger(id){
+    this.state.activeTab='reports'; this.state.reportTab='ledger'; this.state.ledgerPartyId=id; this.render();
+  },
+
+  /* ---------- items ---------- */
+  renderItems(){
+    const s = this.state;
+    const q = (s.search||'').toLowerCase();
+    const rows = s.items.filter(i=>!q||i.name.toLowerCase().includes(q)).slice().sort((a,b)=>a.name.localeCompare(b.name));
+    return `
+      ${this.topbar('Items')}
+      <div class="section-head">
+        <h2>Inventory<span class="count">${s.items.length} items</span></h2>
+        <button class="btn btn-primary" onclick="App.openItemModal()">${ICONS.plus} Add Item</button>
+      </div>
+      <div class="searchbar">${ICONS.search}<input placeholder="Search items" value="${esc(s.search||'')}" oninput="App.state.search=this.value; App.renderItemsOnly();"></div>
+      <div class="card" id="listCard">${this.itemsTable(rows)}</div>
+    `;
+  },
+  renderItemsOnly(){ const el=document.getElementById('listCard'); if(el){ const q=(this.state.search||'').toLowerCase(); const rows=this.state.items.filter(i=>!q||i.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)); el.innerHTML=this.itemsTable(rows); } },
+  itemsTable(rows){
+    if(!rows.length) return this.emptyState('No items yet', 'Add your first item to start billing.');
+    return `<table><thead><tr><th>Item</th><th>Unit</th><th class="num">Sale Price</th><th class="num">Purchase Price</th><th class="num">Tax %</th><th class="num">Stock</th><th></th></tr></thead><tbody>
+      ${rows.map(i=>`<tr>
+        <td style="font-weight:600;">${esc(i.name)}</td>
+        <td style="color:var(--ink-faint); font-size:12.5px;">${esc(i.unit)}</td>
+        <td class="num">${fmt(i.salePrice)}</td>
+        <td class="num" style="color:var(--ink-faint);">${fmt(i.purchasePrice)}</td>
+        <td class="num">${i.tax}%</td>
+        <td class="num ${i.stock<=i.lowStock?'amt-red':''}">${fmtInt(i.stock)} ${i.stock<=i.lowStock? '<span class="chip chip-red" style="margin-left:6px;">Low</span>':''}</td>
+        <td><div class="row-actions">
+          <button class="icon-btn" title="Edit" onclick="App.openItemModal('${i.id}')">${ICONS.edit}</button>
+          <button class="icon-btn" title="Delete" onclick="App.deleteItem('${i.id}')">${ICONS.trash}</button>
+        </div></td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  },
+  openItemModal(id){
+    this.editingId = id||null;
+    const it = id? this.itemById(id) : {name:'', unit:'Pcs', salePrice:0, purchasePrice:0, tax:12, stock:0, lowStock:5};
+    this.openModal(`
+      <div class="modal-head"><h3>${id?'Edit Item':'Add Item'}</h3><button class="icon-btn" onclick="App.closeModal()">${ICONS.x}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Item name</label><input id="f_name" value="${esc(it.name)}" placeholder="e.g. Notebook 200pg"></div>
+        <div class="field-row3">
+          <div class="field"><label>Unit</label>
+            <select id="f_unit">${['Pcs','Kg','Ltr','Box','Meter','Dozen','Set','Pack'].map(u=>`<option ${it.unit===u?'selected':''}>${u}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Tax %</label>
+            <select id="f_tax">${[0,5,12,18,28].map(t=>`<option value="${t}" ${it.tax===t?'selected':''}>${t}%</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>${id?'Current stock':'Opening stock'}</label><input id="f_stock" type="number" step="any" value="${id? it.stock : 0}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Sale price (₹)</label><input id="f_sale" type="number" step="any" value="${it.salePrice}"></div>
+          <div class="field"><label>Purchase price (₹)</label><input id="f_purchase" type="number" step="any" value="${it.purchasePrice}"></div>
+        </div>
+        <div class="field"><label>Low stock alert below</label><input id="f_low" type="number" step="any" value="${it.lowStock}"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.submitItem(${id?`'${id}'`:'null'})">${ICONS.check} Save Item</button>
+      </div>
+    `);
+  },
+  submitItem(id){
+    const name = document.getElementById('f_name').value.trim();
+    if(!name){ this.toast('Item name is required','error'); return; }
+    const data = {
+      name, unit:document.getElementById('f_unit').value,
+      tax:Number(document.getElementById('f_tax').value),
+      salePrice:Number(document.getElementById('f_sale').value)||0,
+      purchasePrice:Number(document.getElementById('f_purchase').value)||0,
+      lowStock:Number(document.getElementById('f_low').value)||0,
+    };
+    if(id){ data.stock = Number(document.getElementById('f_stock').value)||0; this.saveItem(data, id); }
+    else{ data.openingStock = Number(document.getElementById('f_stock').value)||0; this.saveItem(data, null); }
+  },
+
+  /* ---------- payments ---------- */
+  renderPayments(){
+    const s = this.state;
+    const rows = s.payments.slice().sort((a,b)=>b.createdAt-a.createdAt);
+    return `
+      ${this.topbar('Payments')}
+      <div class="section-head">
+        <h2>Payment History<span class="count">${rows.length} total</span></h2>
+        <button class="btn btn-primary" onclick="App.openPaymentModal()">${ICONS.plus} Record Payment</button>
+      </div>
+      <div class="card">
+        ${rows.length? `<table><thead><tr><th>Date</th><th>Party</th><th>Type</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th></th></tr></thead><tbody>
+          ${rows.map(p=>{
+            const party = this.partyById(p.partyId);
+            return `<tr>
+              <td style="color:var(--ink-faint); font-size:12px;" class="mono">${fmtDate(p.date)}</td>
+              <td>${esc(party? party.name : '—')}</td>
+              <td><span class="chip ${p.type==='in'?'chip-green':'chip-red'}">${p.type==='in'?'Received':'Paid'}</span></td>
+              <td class="num ${p.type==='in'?'amt-green':'amt-red'}">${fmt(p.amount)}</td>
+              <td style="color:var(--ink-faint); font-size:12.5px;">${esc(p.mode)}</td>
+              <td style="color:var(--ink-faint); font-size:12px;">${p.refId? 'via '+p.refId : (esc(p.note)||'—')}</td>
+              <td><div class="row-actions">${p.refId? '' : `<button class="icon-btn" title="Delete" onclick="App.deletePayment('${p.id}')">${ICONS.trash}</button>`}</div></td>
+            </tr>`;
+          }).join('')}
+        </tbody></table>` : this.emptyState('No payments yet', 'Record a payment received or paid.')}
+      </div>
+    `;
+  },
+  openPaymentModal(){
+    this.openModal(`
+      <div class="modal-head"><h3>Record Payment</h3><button class="icon-btn" onclick="App.closeModal()">${ICONS.x}</button></div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Direction</label>
+          <div class="party-type-toggle">
+            <label><input type="radio" name="pdir" value="in" checked onchange="App.refreshPaymentPartyList('in')"><span>Received (In)</span></label>
+            <label><input type="radio" name="pdir" value="out" onchange="App.refreshPaymentPartyList('out')"><span>Paid (Out)</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Party</label>
+          <select id="f_party">${this.state.parties.filter(p=>p.type==='customer').map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Amount (₹)</label><input id="f_amount" type="number" min="0" step="any" value=""></div>
+          <div class="field"><label>Date</label><input id="f_date" type="date" value="${todayStr()}"></div>
+        </div>
+        <div class="field">
+          <label>Mode</label>
+          <select id="f_mode">${['Cash','UPI','Card','Bank Transfer'].map(m=>`<option>${m}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Note (optional)</label><input id="f_note" placeholder="e.g. against old dues"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.submitPayment()">${ICONS.check} Save Payment</button>
+      </div>
+    `);
+  },
+  refreshPaymentPartyList(dir){
+    const sel = document.getElementById('f_party');
+    const list = this.state.parties.filter(p=> dir==='in'? p.type==='customer' : p.type==='supplier');
+    sel.innerHTML = list.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  },
+  submitPayment(){
+    const type = document.querySelector('input[name="pdir"]:checked').value;
+    const partyId = document.getElementById('f_party').value;
+    const amount = Number(document.getElementById('f_amount').value)||0;
+    if(!partyId){ this.toast('Please select a party','error'); return; }
+    if(amount<=0){ this.toast('Enter a valid amount','error'); return; }
+    this.savePayment({ type, partyId, amount, date:document.getElementById('f_date').value||todayStr(), mode:document.getElementById('f_mode').value, note:document.getElementById('f_note').value.trim() });
+  },
+
+  /* ---------- expenses ---------- */
+  renderExpenses(){
+    const s = this.state;
+    const rows = s.expenses.slice().sort((a,b)=>b.createdAt-a.createdAt);
+    const total = rows.reduce((a,e)=>a+e.amount,0);
+    return `
+      ${this.topbar('Expenses')}
+      <div class="section-head">
+        <h2>Business Expenses<span class="count">${rows.length} entries · ${fmt(total)} total</span></h2>
+        <button class="btn btn-primary" onclick="App.openExpenseModal()">${ICONS.plus} Add Expense</button>
+      </div>
+      <div class="card">
+        ${rows.length? `<table><thead><tr><th>Date</th><th>Category</th><th>Note</th><th class="num">Amount</th><th></th></tr></thead><tbody>
+          ${rows.map(e=>`<tr>
+            <td style="color:var(--ink-faint); font-size:12px;" class="mono">${fmtDate(e.date)}</td>
+            <td><span class="chip chip-brass">${esc(e.category)}</span></td>
+            <td style="color:var(--ink-faint); font-size:12.5px;">${esc(e.note||'—')}</td>
+            <td class="num amt-red">${fmt(e.amount)}</td>
+            <td><div class="row-actions">
+              <button class="icon-btn" title="Edit" onclick="App.openExpenseModal('${e.id}')">${ICONS.edit}</button>
+              <button class="icon-btn" title="Delete" onclick="App.deleteExpense('${e.id}')">${ICONS.trash}</button>
+            </div></td>
+          </tr>`).join('')}
+        </tbody></table>` : this.emptyState('No expenses yet', 'Track rent, salaries, utilities and more.')}
+      </div>
+    `;
+  },
+  openExpenseModal(id){
+    this.editingId = id||null;
+    const e = id? this.state.expenses.find(x=>x.id===id) : {date:todayStr(), category:'Rent', amount:0, note:''};
+    this.openModal(`
+      <div class="modal-head"><h3>${id?'Edit Expense':'Add Expense'}</h3><button class="icon-btn" onclick="App.closeModal()">${ICONS.x}</button></div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>Category</label>
+            <select id="f_cat">${['Rent','Salary','Electricity','Transport','Maintenance','Marketing','Supplies','Other'].map(c=>`<option ${e.category===c?'selected':''}>${c}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Amount (₹)</label><input id="f_amt" type="number" min="0" step="any" value="${e.amount}"></div>
+        </div>
+        <div class="field"><label>Date</label><input id="f_date" type="date" value="${e.date}"></div>
+        <div class="field"><label>Note (optional)</label><input id="f_note" value="${esc(e.note||'')}"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.submitExpense(${id?`'${id}'`:'null'})">${ICONS.check} Save Expense</button>
+      </div>
+    `);
+  },
+  submitExpense(id){
+    const amount = Number(document.getElementById('f_amt').value)||0;
+    if(amount<=0){ this.toast('Enter a valid amount','error'); return; }
+    const data = { category:document.getElementById('f_cat').value, amount, date:document.getElementById('f_date').value||todayStr(), note:document.getElementById('f_note').value.trim() };
+    this.saveExpense(data, id);
+  },
+
+  /* ---------- reports ---------- */
+  renderReports(){
+    const tab = this.state.reportTab||'pl';
+    return `
+      ${this.topbar('Reports')}
+      <div class="tabs-sub">
+        <div class="tab-sub ${tab==='pl'?'active':''}" onclick="App.setReportTab('pl')">Profit &amp; Loss</div>
+        <div class="tab-sub ${tab==='gst'?'active':''}" onclick="App.setReportTab('gst')">GST Summary</div>
+        <div class="tab-sub ${tab==='stock'?'active':''}" onclick="App.setReportTab('stock')">Stock Report</div>
+        <div class="tab-sub ${tab==='ledger'?'active':''}" onclick="App.setReportTab('ledger')">Party Statement</div>
+      </div>
+      ${tab==='pl'? this.reportPL() : tab==='gst'? this.reportGST() : tab==='stock'? this.reportStock() : this.reportLedger()}
+    `;
+  },
+  reportPL(){
+    const s = this.state;
+    const sales = s.invoices.reduce((a,i)=>a+i.total,0);
+    const purchases = s.purchases.reduce((a,i)=>a+i.total,0);
+    const expenses = s.expenses.reduce((a,e)=>a+e.amount,0);
+    const gross = sales - purchases;
+    const net = gross - expenses;
+    return `
+      <div class="card card-pad" style="max-width:460px;">
+        <div class="totals-row"><span>Total Sales</span><span class="val amt-green" style="font-family:'IBM Plex Mono';">${fmt(sales)}</span></div>
+        <div class="totals-row"><span>Total Purchases</span><span class="val amt-red" style="font-family:'IBM Plex Mono';">- ${fmt(purchases)}</span></div>
+        <div class="totals-row" style="border-top:1px dashed var(--rule); padding-top:8px; margin-top:4px;"><span><b>Gross Profit</b></span><span class="val" style="font-family:'IBM Plex Mono'; font-weight:700;">${fmt(gross)}</span></div>
+        <div class="totals-row"><span>Total Expenses</span><span class="val amt-red" style="font-family:'IBM Plex Mono';">- ${fmt(expenses)}</span></div>
+        <div class="totals-row grand"><span>Net Profit</span><span class="val ${net<0?'amt-red':'amt-green'}">${fmt(net)}</span></div>
+      </div>
+      <div class="hint" style="margin-top:10px;">Simplified statement across all recorded dates — total sales less purchase cost and expenses. Not a substitute for formal accounting.</div>
+    `;
+  },
+  reportGST(){
+    const s = this.state;
+    const groupBy = (data)=>{
+      const g = {};
+      data.forEach(d=> d.lines.forEach(l=>{
+        const rate = l.tax;
+        const taxable = l.qty*l.rate;
+        const taxAmt = taxable*rate/100;
+        g[rate] = g[rate] || {taxable:0, tax:0};
+        g[rate].taxable += taxable; g[rate].tax += taxAmt;
+      }));
+      return g;
+    };
+    const out = groupBy(s.invoices);
+    const inp = groupBy(s.purchases);
+    const rates = Array.from(new Set([...Object.keys(out), ...Object.keys(inp)])).sort((a,b)=>a-b);
+    const totalOut = Object.values(out).reduce((a,v)=>a+v.tax,0);
+    const totalIn = Object.values(inp).reduce((a,v)=>a+v.tax,0);
+    return `
+      <div class="card" style="max-width:720px;">
+        <table><thead><tr><th>Tax Rate</th><th class="num">Taxable (Sales)</th><th class="num">Output GST</th><th class="num">Taxable (Purchases)</th><th class="num">Input GST</th></tr></thead>
+        <tbody>
+          ${rates.length? rates.map(r=>`<tr>
+            <td style="font-weight:600;">${r}%</td>
+            <td class="num">${fmt(out[r]?out[r].taxable:0)}</td>
+            <td class="num amt-green">${fmt(out[r]?out[r].tax:0)}</td>
+            <td class="num">${fmt(inp[r]?inp[r].taxable:0)}</td>
+            <td class="num amt-red">${fmt(inp[r]?inp[r].tax:0)}</td>
+          </tr>`).join('') : `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--ink-faint);">No GST-rated transactions yet.</td></tr>`}
+        </tbody></table>
+      </div>
+      <div class="card card-pad" style="max-width:360px; margin-top:14px;">
+        <div class="totals-row"><span>Output GST (on sales)</span><span class="val">${fmt(totalOut)}</span></div>
+        <div class="totals-row"><span>Input GST (on purchases)</span><span class="val">- ${fmt(totalIn)}</span></div>
+        <div class="totals-row grand"><span>Net GST Payable</span><span class="val ${totalOut-totalIn<0?'amt-green':'amt-red'}">${fmt(totalOut-totalIn)}</span></div>
+      </div>
+    `;
+  },
+  reportStock(){
+    const s = this.state;
+    const rows = s.items.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    const value = rows.reduce((a,i)=>a+i.stock*i.purchasePrice,0);
+    return `
+      <div class="card">
+        ${rows.length? `<table><thead><tr><th>Item</th><th class="num">Stock</th><th>Unit</th><th class="num">Purchase Price</th><th class="num">Stock Value</th><th>Status</th></tr></thead><tbody>
+        ${rows.map(i=>`<tr>
+          <td style="font-weight:600;">${esc(i.name)}</td>
+          <td class="num">${fmtInt(i.stock)}</td>
+          <td style="color:var(--ink-faint); font-size:12.5px;">${esc(i.unit)}</td>
+          <td class="num">${fmt(i.purchasePrice)}</td>
+          <td class="num">${fmt(i.stock*i.purchasePrice)}</td>
+          <td>${i.stock<=i.lowStock? '<span class="chip chip-red">Low</span>' : '<span class="chip chip-green">OK</span>'}</td>
+        </tr>`).join('')}
+        </tbody></table>` : this.emptyState('No items yet','Add items to see stock valuation.')}
+      </div>
+      <div class="hint" style="margin-top:10px;">Total stock value (at purchase price): <b class="mono">${fmt(value)}</b></div>
+    `;
+  },
+  reportLedger(){
+    const s = this.state;
+    const pid = s.ledgerPartyId || (s.parties[0] && s.parties[0].id);
+    const party = pid && this.partyById(pid);
+    const options = s.parties.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    let body = '';
+    if(!party){
+      body = this.emptyState('No party selected', 'Add a party to view their statement.');
+    } else {
+      const txns = [];
+      if(party.opening) txns.push({date:'', ts:-1, label:'Opening Balance', debit: party.type==='customer'? Math.max(party.opening,0):0, credit: party.type==='customer'? 0: Math.max(party.opening,0)});
+      s.invoices.filter(i=>i.partyId===party.id).forEach(i=> txns.push({date:i.date, ts:i.createdAt, label:'Sale '+i.id, debit: party.type==='customer'? i.total:0, credit: party.type==='supplier'? i.total:0}));
+      s.purchases.filter(i=>i.partyId===party.id).forEach(i=> txns.push({date:i.date, ts:i.createdAt, label:'Purchase '+i.id, debit: party.type==='supplier'? i.total:0, credit: party.type==='customer'? i.total:0}));
+      s.payments.filter(p=>p.partyId===party.id).forEach(p=> txns.push({date:p.date, ts:p.createdAt, label:(p.type==='in'?'Payment Received':'Payment Paid')+(p.refId?' ('+p.refId+')':''), debit: (party.type==='customer'&&p.type==='in')||(party.type==='supplier'&&p.type==='out') ? 0: p.amount, credit: (party.type==='customer'&&p.type==='in')||(party.type==='supplier'&&p.type==='out') ? p.amount : 0}));
+      txns.sort((a,b)=>a.ts-b.ts);
+      let running = 0;
+      const rowsHtml = txns.map(t=>{ running += t.debit - t.credit; return `<tr>
+        <td style="color:var(--ink-faint); font-size:12px;">${t.date?fmtDate(t.date):'—'}</td>
+        <td>${esc(t.label)}</td>
+        <td class="num">${t.debit? fmt(t.debit) : ''}</td>
+        <td class="num">${t.credit? fmt(t.credit) : ''}</td>
+        <td class="num ${running>0?'amt-red':'amt-green'}">${fmt(Math.abs(running))} ${running>0? (party.type==='customer'?'Dr':'Dr') : ''}</td>
+      </tr>`;}).join('');
+      const bal = this.partyBalance(party);
+      body = `
+        <div class="balance-banner" style="background:${bal>0?'var(--red-wash)':'var(--green-wash)'};">
+          <div><div class="l">${party.type==='customer'?'Amount receivable':'Amount payable'}</div></div>
+          <div class="v ${bal>0?'amt-red':'amt-green'}">${fmt(Math.abs(bal))}</div>
+        </div>
+        <div class="card">
+          <table><thead><tr><th>Date</th><th>Particulars</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+          <tbody>${txns.length? rowsHtml : `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--ink-faint);">No transactions with this party yet.</td></tr>`}</tbody></table>
+        </div>
+      `;
+    }
+    return `
+      <div class="field" style="max-width:320px; margin-bottom:16px;">
+        <label>Select party</label>
+        <select onchange="App.state.ledgerPartyId=this.value; App.render();">
+          ${options.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>${esc(p.name)} (${p.type})</option>`).join('')}
+        </select>
+      </div>
+      ${body}
+    `;
+  },
+
+  /* ---------- settings ---------- */
+  setSettingsTab(tab){ this.state.settingsTab = tab; this.render(); },
+  renderSettings(){
+    const tab = this.state.settingsTab||'profile';
+    return `
+      ${this.topbar('Settings')}
+      <div class="tabs-sub">
+        <div class="tab-sub ${tab==='profile'?'active':''}" onclick="App.setSettingsTab('profile')">Business Profile</div>
+        <div class="tab-sub ${tab==='invoice'?'active':''}" onclick="App.setSettingsTab('invoice')">Invoice &amp; Tax</div>
+        <div class="tab-sub ${tab==='backup'?'active':''}" onclick="App.setSettingsTab('backup')">Backup &amp; Sync</div>
+        <div class="tab-sub ${tab==='account'?'active':''}" onclick="App.setSettingsTab('account')">Account &amp; Security</div>
+      </div>
+      ${tab==='profile'? this.settingsProfile() : tab==='invoice'? this.settingsInvoice() : tab==='backup'? this.settingsBackup() : this.settingsAccount()}
+    `;
+  },
+
+  settingsProfile(){
+    const b = this.state.business;
+    return `
+      <div class="card card-pad" style="max-width:520px;">
+        <div class="field"><label>Business name</label><input id="s_name" value="${esc(b.name)}"></div>
+        <div class="field-row">
+          <div class="field"><label>GSTIN</label><input id="s_gstin" value="${esc(b.gstin||'')}" placeholder="29ABCDE1234F1Z5"></div>
+          <div class="field"><label>Phone</label><input id="s_phone" value="${esc(b.phone||'')}"></div>
+        </div>
+        <div class="field"><label>Address</label><textarea id="s_addr" rows="2">${esc(b.address||'')}</textarea></div>
+        <button class="btn btn-primary" onclick="App.saveSettings()">${ICONS.check} Save Settings</button>
+      </div>
+      <div class="section-head"><h2>Data</h2></div>
+      <div class="card card-pad" style="max-width:520px;">
+        <p style="font-size:13px; color:var(--ink-soft); margin-top:0;">This resets everything for your account — parties, items, sales, purchases, payments and expenses. This cannot be undone.</p>
+        <button class="btn btn-danger" onclick="App.resetAll()">${ICONS.trash} Reset all data</button>
+      </div>
+    `;
+  },
+  saveSettings(){
+    this.state.business = {
+      name: document.getElementById('s_name').value.trim()||'My Shop',
+      gstin: document.getElementById('s_gstin').value.trim(),
+      phone: document.getElementById('s_phone').value.trim(),
+      address: document.getElementById('s_addr').value.trim(),
+    };
+    this.persist(); this.render(); this.toast('Settings saved');
+  },
+  resetAll(){
+    if(!confirm('This will permanently erase all parties, items, sales, purchases, payments and expenses. Continue?')) return;
+    const name = this.state.business.name;
+    this.state = this.defaultState();
+    this.state.business.name = name;
+    this.persist(); this.render(); this.toast('All data reset');
+  },
+
+  settingsInvoice(){
+    const inv = this.state.invoiceSettings;
+    return `
+      <div class="card card-pad" style="max-width:520px;">
+        <div class="field-row">
+          <div class="field"><label>Invoice number prefix</label><input id="i_prefix" value="${esc(inv.prefix)}" placeholder="INV-"></div>
+          <div class="field"><label>Default GST % for new items/customers</label><input id="i_gst" type="number" min="0" step="any" value="${inv.defaultGst}"></div>
+        </div>
+        <div class="field"><label>Terms &amp; conditions (printed on bills)</label><textarea id="i_terms" rows="2">${esc(inv.terms||'')}</textarea></div>
+      </div>
+      <div class="section-head"><h2>Bank &amp; UPI details <span class="count">shown on printed invoices</span></h2></div>
+      <div class="card card-pad" style="max-width:520px;">
+        <div class="field-row">
+          <div class="field"><label>Account name</label><input id="i_accname" value="${esc(inv.bank.accName||'')}"></div>
+          <div class="field"><label>Account number</label><input id="i_accnum" value="${esc(inv.bank.accNumber||'')}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>IFSC</label><input id="i_ifsc" value="${esc(inv.bank.ifsc||'')}"></div>
+          <div class="field"><label>UPI ID</label><input id="i_upi" value="${esc(inv.bank.upi||'')}" placeholder="shop@upi"></div>
+        </div>
+        <button class="btn btn-primary" onclick="App.saveInvoiceSettings()">${ICONS.check} Save</button>
+      </div>
+      <div class="hint" style="max-width:520px;">Tip: set a fixed GST% on any customer's party record (Parties → Edit) and it will auto-apply to every new bill you raise for them.</div>
+    `;
+  },
+  saveInvoiceSettings(){
+    this.state.invoiceSettings = {
+      prefix: document.getElementById('i_prefix').value.trim()||'INV-',
+      defaultGst: Number(document.getElementById('i_gst').value)||0,
+      terms: document.getElementById('i_terms').value.trim(),
+      bank: {
+        accName: document.getElementById('i_accname').value.trim(),
+        accNumber: document.getElementById('i_accnum').value.trim(),
+        ifsc: document.getElementById('i_ifsc').value.trim(),
+        upi: document.getElementById('i_upi').value.trim(),
+      }
+    };
+    this.persist(); this.render(); this.toast('Invoice settings saved');
+  },
+
+  settingsBackup(){
+    const fb = Store.mode==='firebase';
+    const cfg = CloudConfig.get();
+    return `
+      <div class="card card-pad" style="max-width:560px;">
+        <div class="stat-label" style="margin-bottom:2px;">Sync status</div>
+        <div style="font-size:14px; font-weight:600; color:${fb?'var(--green)':Store.cloudAvailable?'var(--green)':'var(--brass)'};">
+          ${fb? 'Cloud sync active — Firebase (production)' : Store.cloudAvailable? 'Cloud sync active — Claude storage' : 'Local-only mode'}
+        </div>
+        <div style="font-size:12px; color:var(--ink-faint); margin-top:4px;" id="syncStamp2">${this.syncLabel()}</div>
+        <p style="font-size:13px; color:var(--ink-soft);">
+          ${fb
+            ? 'Every change saves to your Firestore database automatically, and a full snapshot of your ledger is backed up every day the first time you (or your staff) open Record Book — no action needed.'
+            : Store.cloudAvailable
+              ? 'Every change is saved automatically and is available the moment you log in from any device. Connect Firebase below for a production-grade backend with daily backups independent of Claude.'
+              : 'This file is running outside Claude with no cloud connected, so data is saved to this browser only (localStorage). Connect Firebase below, or use export/import to back up manually.'}
+        </p>
+        <button class="btn btn-outline" onclick="App.persist(); App.toast('Backup saved');">${ICONS.check} Back up now</button>
+      </div>
+
+      <div class="section-head"><h2>Cloud setup ${fb?'<span class="count">connected</span>':''}</h2></div>
+      <div class="card card-pad" style="max-width:560px;">
+        ${fb? `
+          <p style="font-size:13px; color:var(--ink-soft); margin-top:0;">Connected to Firebase project <b class="mono">${esc(cfg.projectId||'')}</b>. Logins and data now go through Firebase Authentication + Firestore — this is what makes the app production-ready with real security and automatic daily backups.</p>
+          <button class="btn btn-danger" onclick="App.disconnectFirebase()">${ICONS.trash} Disconnect Firebase</button>
+        ` : `
+          <p style="font-size:13px; color:var(--ink-soft); margin-top:0;">Paste your free Firebase project's web config below to switch Record Book to a real production backend (secure login + Firestore database + automatic daily backups, independent of Claude). Create a free project at <span class="mono">console.firebase.google.com</span> — enable <b>Email/Password</b> sign-in and create a <b>Firestore</b> database, then copy the config object from your app's settings.</p>
+          <textarea id="fb_config" rows="6" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}' style="font-family:'IBM Plex Mono',monospace; font-size:12px;"></textarea>
+          ${Store.firebaseError? `<div class="auth-err" style="margin-top:8px;">${esc(Store.firebaseError)}</div>`:''}
+          <div class="hint" style="margin:6px 0 10px;">This creates a fresh, separate login system — your current local data isn't carried over automatically. Export it first (below) and import it again once you're connected and logged in.</div>
+          <button class="btn btn-primary" onclick="App.connectFirebase()">${ICONS.check} Connect &amp; reload</button>
+        `}
+      </div>
+
+      ${fb? `
+      <div class="section-head"><h2>Daily backups</h2></div>
+      <div class="card" id="backupList"><div style="padding:24px; text-align:center; color:var(--ink-faint); font-size:12.5px;">Loading backups…</div></div>
+      ` : ''}
+
+      <div class="section-head"><h2>Export / Import</h2></div>
+      <div class="card card-pad" style="max-width:560px;">
+        <p style="font-size:13px; color:var(--ink-soft); margin-top:0;">Download a full copy of your ledger as a file, or restore from a previous export.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="App.exportBackup()">${ICONS.book} Export backup (.json)</button>
+          <label class="btn btn-ghost" style="cursor:pointer;">${ICONS.plus} Import backup
+            <input type="file" accept="application/json" style="display:none;" onchange="App.importBackup(this.files[0])">
+          </label>
+        </div>
+      </div>
+    `;
+  },
+  connectFirebase(){
+    const raw = document.getElementById('fb_config').value.trim();
+    let cfg;
+    try{ cfg = JSON.parse(raw); }catch(e){ this.toast('That does not look like valid JSON','error'); return; }
+    if(!cfg.apiKey || !cfg.projectId){ this.toast('Config is missing apiKey/projectId','error'); return; }
+    CloudConfig.set(cfg);
+    this.toast('Saved — reloading to connect…');
+    setTimeout(()=> location.reload(), 500);
+  },
+  disconnectFirebase(){
+    if(!confirm('Disconnect Firebase? You will be logged out and this device will fall back to local/Claude storage.')) return;
+    CloudConfig.clear();
+    location.reload();
+  },
+  async loadBackupList(){
+    const el = document.getElementById('backupList');
+    if(!el) return;
+    const list = await this.listBackups();
+    if(!document.getElementById('backupList')) return; // settings tab changed while loading
+    document.getElementById('backupList').innerHTML = list.length? `<table><thead><tr><th>Date</th><th>Saved</th><th></th></tr></thead><tbody>
+      ${list.map(b=>`<tr><td class="mono" style="font-weight:600;">${b.id}</td><td style="color:var(--ink-faint); font-size:12px;">${new Date(b.savedAt).toLocaleString('en-IN')}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="App.restoreBackup('${b.id}')">Restore</button></td></tr>`).join('')}
+      </tbody></table>` : this.emptyState('No backups yet', 'Your first daily backup is saved automatically the moment you use the app today.');
+  },
+  exportBackup(){
+    const blob = new Blob([JSON.stringify(this.state, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'record-book-backup-'+todayStr()+'.json';
+    a.click();
+    this.toast('Backup downloaded');
+  },
+  importBackup(file){
+    if(!file) return;
+    if(!confirm('Importing will replace all current data for this account. Continue?')) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.parties)) throw new Error('bad file');
+        this.state = data;
+        if(!this.state.invoiceSettings) this.state.invoiceSettings = this.defaultState().invoiceSettings;
+        this.persist(); this.render(); this.toast('Backup restored');
+      }catch(e){ this.toast('Could not read that backup file','error'); }
+    };
+    reader.readAsText(file);
+  },
+
+  settingsAccount(){
+    const fb = Store.mode==='firebase';
+    return `
+      <div class="card card-pad" style="max-width:420px;">
+        <div class="field"><label>${fb?'Email':'Username'}</label><input value="${fb? esc(Auth.session.email) : '@'+esc(Auth.session.username)}" disabled></div>
+        <div class="hint">${fb? 'Secured by Firebase Authentication.' : ''}</div>
+      </div>
+      <div class="section-head"><h2>Change password</h2></div>
+      <div class="card card-pad" style="max-width:420px;">
+        <div class="field"><label>Current password</label><input id="p_old" type="password"></div>
+        <div class="field"><label>New password</label><input id="p_new" type="password"></div>
+        <div class="field"><label>Confirm new password</label><input id="p_new2" type="password"></div>
+        <button class="btn btn-primary" onclick="App.changePassword()">${ICONS.check} Update password</button>
+      </div>
+      <div class="section-head"><h2>Session</h2></div>
+      <div class="card card-pad" style="max-width:420px;">
+        <button class="btn btn-ghost" onclick="Auth.logout()">Log out</button>
+      </div>
+    `;
+  },
+  async changePassword(){
+    const oldPass = document.getElementById('p_old').value;
+    const newPass = document.getElementById('p_new').value;
+    const newPass2 = document.getElementById('p_new2').value;
+    if(newPass!==newPass2){ this.toast('New passwords do not match','error'); return; }
+    const res = await Auth.changePassword(oldPass, newPass);
+    if(!res.ok){ this.toast(res.msg,'error'); return; }
+    this.toast('Password updated'); this.render();
+  },
+
+  /* ---------- print ---------- */
+  printDocument(kind, id){
+    const isSale = kind==='sale';
+    const doc = (isSale? this.state.invoices : this.state.purchases).find(d=>d.id===id);
+    if(!doc) return;
+    const p = this.partyById(doc.partyId);
+    const b = this.state.business;
+    const inv = this.state.invoiceSettings;
+    const paid = this.state.payments.filter(x=>x.refType===(isSale?'invoice':'purchase') && x.refId===id).reduce((a,x)=>a+x.amount,0);
+    const rows = doc.lines.map((l,i)=>`<tr>
+        <td style="padding:6px 8px; border-bottom:1px solid #ddd;">${i+1}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #ddd;">${esc(l.name)}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #ddd; text-align:right;">${fmtInt(l.qty)}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #ddd; text-align:right;">${fmt(l.rate)}</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #ddd; text-align:right;">${l.tax}%</td>
+        <td style="padding:6px 8px; border-bottom:1px solid #ddd; text-align:right;">${fmt(l.qty*l.rate*(1+l.tax/100))}</td>
+      </tr>`).join('');
+    const html = `
+      <div style="font-family:'IBM Plex Sans',sans-serif; color:#211D18; max-width:760px; margin:0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #211D18; padding-bottom:14px; margin-bottom:14px;">
+          <div>
+            <div style="font-family:'Fraunces',serif; font-size:22px; font-weight:700;">${esc(b.name)}</div>
+            ${b.address? `<div style="font-size:12px; color:#5B5449; max-width:280px;">${esc(b.address)}</div>`:''}
+            ${b.phone? `<div style="font-size:12px; color:#5B5449;">Ph: ${esc(b.phone)}</div>`:''}
+            ${b.gstin? `<div style="font-size:12px; color:#5B5449;">GSTIN: ${esc(b.gstin)}</div>`:''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:18px; font-weight:700;">${isSale?'TAX INVOICE':'PURCHASE BILL'}</div>
+            <div style="font-size:12px; color:#5B5449;">No: ${esc(doc.id)}</div>
+            <div style="font-size:12px; color:#5B5449;">Date: ${fmtDate(doc.date)}</div>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#8B8271;">${isSale?'Billed to':'Billed from'}</div>
+          <div style="font-size:14px; font-weight:600;">${esc(p? p.name:'Walk-in')}</div>
+          ${p&&p.phone? `<div style="font-size:12px; color:#5B5449;">Ph: ${esc(p.phone)}</div>`:''}
+          ${p&&p.gstin? `<div style="font-size:12px; color:#5B5449;">GSTIN: ${esc(p.gstin)}</div>`:''}
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead><tr style="background:#F3ECDA;">
+            <th style="padding:6px 8px; text-align:left;">#</th><th style="padding:6px 8px; text-align:left;">Item</th>
+            <th style="padding:6px 8px; text-align:right;">Qty</th><th style="padding:6px 8px; text-align:right;">Rate</th>
+            <th style="padding:6px 8px; text-align:right;">Tax</th><th style="padding:6px 8px; text-align:right;">Amount</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+          <div style="width:260px; font-size:13px;">
+            <div style="display:flex; justify-content:space-between; padding:3px 0;"><span>Subtotal</span><span>${fmt(doc.subtotal)}</span></div>
+            <div style="display:flex; justify-content:space-between; padding:3px 0;"><span>Tax</span><span>${fmt(doc.taxTotal)}</span></div>
+            ${doc.discount? `<div style="display:flex; justify-content:space-between; padding:3px 0;"><span>Discount</span><span>- ${fmt(doc.discount)}</span></div>`:''}
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid #211D18; font-weight:700; font-size:15px;"><span>Total</span><span>${fmt(doc.total)}</span></div>
+            <div style="display:flex; justify-content:space-between; padding:3px 0; color:#3A5F41;"><span>Paid</span><span>${fmt(paid)}</span></div>
+            <div style="display:flex; justify-content:space-between; padding:3px 0; color:#A13A32; font-weight:600;"><span>Balance due</span><span>${fmt(doc.total-paid)}</span></div>
+          </div>
+        </div>
+        ${(inv.bank.accNumber||inv.bank.upi)? `<div style="margin-top:18px; font-size:12px; color:#5B5449;">
+          <b>Payment details:</b>
+          ${inv.bank.accName? ' '+esc(inv.bank.accName)+',':''}
+          ${inv.bank.accNumber? ' A/C '+esc(inv.bank.accNumber)+',':''}
+          ${inv.bank.ifsc? ' IFSC '+esc(inv.bank.ifsc)+',':''}
+          ${inv.bank.upi? ' UPI: '+esc(inv.bank.upi):''}
+        </div>`:''}
+        ${inv.terms? `<div style="margin-top:14px; font-size:12px; color:#8B8271; border-top:1px dashed #CBB98D; padding-top:10px;">${esc(inv.terms)}</div>`:''}
+      </div>
+    `;
+    let area = document.getElementById('printArea');
+    if(!area){ area = document.createElement('div'); area.id='printArea'; document.body.appendChild(area); }
+    area.innerHTML = html;
+    window.print();
+  }
+};
+
+App.init();
+</script>
+</body>
+</html>
