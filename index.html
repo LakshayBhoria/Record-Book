@@ -388,9 +388,26 @@ function nowTs(){ return Date.now(); }
    3. 'local'    — plain browser localStorage. Works anywhere, but each device
       keeps its own separate copy.
 */
+// Built-in default Firebase config, baked into the file itself so every device
+// that loads this page connects to the same backend automatically — no need to
+// paste the config in Settings on each device. A per-device override (set via
+// Settings -> Backup & Sync -> Cloud setup) still takes priority if present.
+const DEFAULT_FIREBASE_CONFIG = {
+  "apiKey": "AIzaSyBJ9spwK_ne2ePky3kBpfiS8nTvr67Q48w",
+  "authDomain": "record-book-32597.firebaseapp.com",
+  "projectId": "record-book-32597",
+  "storageBucket": "record-book-32597.firebasestorage.app",
+  "messagingSenderId": "272866207769",
+  "appId": "1:272866207769:web:aeb566d59bbd12f58d2288",
+  "measurementId": "G-S5E69HFEL0"
+};
+
 const CloudConfig = {
   KEY:'rb_firebase_config',
-  get(){ try{ const v = localStorage.getItem(this.KEY); return v? JSON.parse(v) : null; }catch(e){ return null; } },
+  get(){
+    try{ const v = localStorage.getItem(this.KEY); if(v) return JSON.parse(v); }catch(e){}
+    return DEFAULT_FIREBASE_CONFIG;
+  },
   set(cfg){ localStorage.setItem(this.KEY, JSON.stringify(cfg)); },
   clear(){ localStorage.removeItem(this.KEY); }
 };
